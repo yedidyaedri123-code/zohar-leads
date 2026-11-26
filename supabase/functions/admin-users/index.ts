@@ -18,19 +18,22 @@ function json(body: unknown, status = 200) {
 
 const ROLES = ["admin", "activist", "rabbanit", "call_center"];
 const ASCII_USERNAME = /^[a-z0-9._-]{3,32}$/;
-const UNICODE_USERNAME = /^[\p{L}\p{N}._-]{1,32}$/u;
+const UNICODE_USERNAME = /^[\p{L}\p{N}._-]+(?: [\p{L}\p{N}._-]+)*$/u;
 const EMAIL_DOMAIN = "zohar.local";
 
 // Keep in sync with emailLocal() in data.js.
-// An existing ASCII username stays "<name>@zohar.local".
-// A name with any non-ASCII character becomes "u" + lowercase hex of its UTF-8 bytes.
+// A plain ASCII name stays "<name>@zohar.local". A space or any non-ASCII
+// character becomes "u" + lowercase hex of the UTF-8 bytes.
+// 31 bytes is the longest that fits: "u" + 62 hex chars = 63, under the
+// 64-character email local-part limit.
 function normalizeUsername(raw: unknown): string {
-  return String(raw ?? "").trim().toLowerCase();
+  return String(raw ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
 
 function emailLocal(username: string): string | null {
   if (ASCII_USERNAME.test(username)) return username;
-  if (!UNICODE_USERNAME.test(username) || !/[^\u0000-\u007F]/.test(username)) return null;
+  const needsHex = / /.test(username) || /[^\u0000-\u007F]/.test(username);
+  if (!needsHex || !UNICODE_USERNAME.test(username)) return null;
   const bytes = new TextEncoder().encode(username);
   if (bytes.length > 31) return null;
   let hex = "";
@@ -286,6 +289,8 @@ Deno.serve(async (req: Request) => {
     }
 
     if (newUsername) {
+      // The auth email must follow the new readable username, including a
+      // space or Hebrew name whose local-part is u+hex.
       const { error: emailErr } = await admin.auth.admin.updateUserById(user_id, {
         email: emailFor(newUsername),
         email_confirm: true,

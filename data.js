@@ -11,7 +11,7 @@
   var ADMIN_USERS = URL + '/functions/v1/admin-users';
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   var ASCII_USERNAME = /^[a-z0-9._-]{3,32}$/;
-  var UNICODE_USERNAME = /^[\p{L}\p{N}._-]{1,32}$/u;
+  var UNICODE_USERNAME = /^[\p{L}\p{N}._-]+(?: [\p{L}\p{N}._-]+)*$/u;
 
   var client = null;
   var profile = null;
@@ -59,16 +59,18 @@
   }
 
   function normalizeUsername(value) {
-    return String(value || '').trim().toLowerCase();
+    return String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
   }
 
   // Same rule as supabase/functions/admin-users/index.ts.
-  // ASCII usernames stay "<name>@zohar.local". Any other allowed name
-  // becomes "u" + lowercase hex of its UTF-8 bytes, because a Hebrew
-  // local-part is not a valid email.
+  // A plain ASCII name stays "<name>@zohar.local". A space or any
+  // non-ASCII character becomes "u" + lowercase hex of the UTF-8 bytes.
+  // 31 bytes is the longest that fits: "u" + 62 hex chars = 63, under the
+  // 64-character email local-part limit.
   function emailLocal(username) {
     if (ASCII_USERNAME.test(username)) return username;
-    if (!UNICODE_USERNAME.test(username) || !/[^\u0000-\u007F]/.test(username)) return '';
+    var needsHex = / /.test(username) || /[^\u0000-\u007F]/.test(username);
+    if (!needsHex || !UNICODE_USERNAME.test(username)) return '';
     var bytes = new TextEncoder().encode(username);
     if (bytes.length > 31) return '';
     var hex = '';
@@ -80,8 +82,9 @@
     var name = normalizeUsername(value);
     if (!name) return 'הזינו שם משתמש';
     if (emailLocal(name)) return '';
-    if (/[^\u0000-\u007F]/.test(name) && new TextEncoder().encode(name).length > 31) return 'שם המשתמש ארוך מדי';
-    return 'שם המשתמש יכול להיות בעברית או באנגלית, בלי רווחים. באנגלית: 3–32 תווים (אותיות, מספרים, נקודה, מקף או קו תחתון).';
+    var needsHex = / /.test(name) || /[^\u0000-\u007F]/.test(name);
+    if (needsHex && UNICODE_USERNAME.test(name) && new TextEncoder().encode(name).length > 31) return 'שם המשתמש ארוך מדי';
+    return 'שם המשתמש יכול להיות בעברית או באנגלית, עם רווח בין מילים. באנגלית בלי רווח: 3–32 תווים (אותיות, מספרים, נקודה, מקף או קו תחתון).';
   }
 
   function loginEmail(value) {
@@ -118,7 +121,7 @@
     var code = String(payload && (payload.error || payload.code || payload.message) || '');
     var messages = {
       username_taken: 'שם המשתמש כבר תפוס',
-      invalid_username: 'שם המשתמש יכול להיות בעברית או באנגלית, בלי רווחים. באנגלית: 3–32 תווים (אותיות, מספרים, נקודה, מקף או קו תחתון).',
+      invalid_username: 'שם המשתמש יכול להיות בעברית או באנגלית, עם רווח בין מילים. באנגלית בלי רווח: 3–32 תווים (אותיות, מספרים, נקודה, מקף או קו תחתון).',
       rabbaniya_id_required: 'לא ניתן ליצור את הרבנית. נסו שוב.',
       rabbaniya_name_taken: 'כבר קיימת רבנית בשם הזה',
       rabbaniya_already_linked: 'הרבנית הזו כבר משויכת למשתמש אחר',
