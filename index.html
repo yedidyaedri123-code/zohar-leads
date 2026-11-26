@@ -46,7 +46,7 @@ input:disabled, select:disabled, textarea:disabled { background: #f8fafc; color:
 .badge.muted { background: #e2e8f0; color: #334155; }
 .group-title { margin: 0.8rem 0 0.35rem; color: #1e3a8a; font-size: 0.95rem; }
 .bottom-nav { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: flex; background: white; border-top: 1px solid #e2e8f0; padding: 0.35rem 0.3rem calc(0.35rem + env(safe-area-inset-bottom)); }
-.bottom-nav button { flex: 1; border: none; background: transparent; font-family: inherit; font-weight: 700; color: #64748b; padding: 0.55rem 0.2rem; border-radius: 10px; font-size: 0.82rem; }
+.bottom-nav button { flex: 1; border: none; background: transparent; font-family: inherit; font-weight: 700; color: #64748b; padding: 0.45rem 0.15rem; border-radius: 10px; font-size: 0.75rem; line-height: 1.15; white-space: normal; }
 .bottom-nav button.active { background: #1e3a8a; color: white; }
 .hidden { display: none !important; }
 .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: flex-end; justify-content: center; }
@@ -142,7 +142,7 @@ body:not([data-role="admin"]):not([data-role="call_center"]) .closer-tools { dis
     </section>
 
     <section id="panel-rabbaniyot" class="hidden">
-      <div class="page-head"><h2>רבניות</h2><button type="button" class="btn" onclick="openRabbaniyaModal()">+ רבנית</button></div>
+      <div class="page-head"><h2>רשימת רבניות</h2><button type="button" class="btn" onclick="openRabbaniyaModal()">+ רבנית</button></div>
       <div class="table-wrap"><table><thead><tr><th>שם</th><th>סטטוס</th><th>קישור</th><th></th></tr></thead><tbody id="rabbaniyotList"></tbody></table></div>
     </section>
 
@@ -155,7 +155,7 @@ body:not([data-role="admin"]):not([data-role="call_center"]) .closer-tools { dis
     <button type="button" class="nav-leads active" data-tab="leads">לידים</button>
     <button type="button" class="nav-closings" data-tab="closings">סגירות</button>
     <button type="button" class="nav-events" data-tab="events">אירועים</button>
-    <button type="button" class="nav-admin" data-tab="rabbaniyot">רבניות</button>
+    <button type="button" class="nav-admin" data-tab="rabbaniyot">רשימת רבניות</button>
     <button type="button" class="nav-admin" data-tab="users">משתמשים</button>
   </nav>
 </div>
@@ -240,10 +240,10 @@ body:not([data-role="admin"]):not([data-role="call_center"]) .closer-tools { dis
     <div class="form-group"><label>שם משתמש</label><input id="newUsername" autocapitalize="none" required></div>
     <div class="form-group"><label>סיסמה</label><input id="newPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password"></div>
     <div class="form-group"><label>שם להצגה</label><input id="newDisplayName" required></div>
+    <p id="rabbanitNameHint" class="hidden" style="color:#64748b;font-size:0.88rem;margin:-0.3rem 0 0.8rem;">לרבנית, שם ההצגה הוא השם שלה ברשימת הרבניות.</p>
     <div class="form-group"><label>תפקיד</label>
       <select id="newRole"><option value="admin">מנהל</option><option value="activist">פעיל</option><option value="rabbanit">רבנית</option><option value="call_center">מוקד</option></select>
     </div>
-    <div class="form-group" id="rabbanitPick"><label>רבנית מהרשימה</label><select id="newRabbaniyaId"></select></div>
     <div class="form-group"><label><input type="checkbox" id="newUserActive" checked> משתמש פעיל</label></div>
     <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;"><button type="button" class="btn" style="background:#64748b;" onclick="closeModal('userModal')">ביטול</button><button class="btn" type="submit">שמירה</button></div>
   </form>
@@ -256,6 +256,7 @@ body:not([data-role="admin"]):not([data-role="call_center"]) .closer-tools { dis
     <p class="hint">ההפעלה נשמרת במכשיר הזה בלבד. בפתיחה הבאה החשבון יינעל עד לאימות.</p>
   </div>
   <div class="row" style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+    <button type="button" class="btn admin-only" onclick="closeModal('settingsModal'); showTab('rabbaniyot');">רשימת רבניות</button>
     <button type="button" class="btn" onclick="closeModal('settingsModal'); openOwnPassword();">הסיסמה שלי</button>
     <button type="button" class="btn" style="background:#64748b;" onclick="closeModal('settingsModal')">סגירה</button>
   </div>
@@ -466,8 +467,8 @@ function showTab(name) {
   if (name === 'rabbaniyot') renderRabbaniyot();
   if (name === 'users') renderUsers();
 }
-function fillRabbanitSelect(select, selected, allowEmpty) {
-  var html = allowEmpty ? '<option value="">ללא רבנית (ליד כללי)</option>' : '<option value="">בחרו רבנית</option>';
+function fillRabbanitSelect(select, selected, emptyLabel) {
+  var html = emptyLabel ? '<option value="">' + esc(emptyLabel) + '</option>' : '<option value="">בחרו רבנית</option>';
   rabbaniyot.filter(function (row) { return row.active !== false || row.id === selected; }).forEach(function (row) {
     html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.active === false ? ' (לא פעילה)' : '') + '</option>';
   });
@@ -631,7 +632,7 @@ function openClosingModal(id) {
   setVal('closingPhone', item ? item.phone : '');
   setVal('closingClosedOn', item && item.closedOn ? item.closedOn : today());
   setVal('closingEventAt', item ? toLocalInput(item.eventAt) : '');
-  fillRabbanitSelect(document.getElementById('closingRabbanit'), item ? item.rabbanit : '', true);
+  fillRabbanitSelect(document.getElementById('closingRabbanit'), item ? item.rabbanit : '', 'ללא רבנית');
   document.getElementById('closingRabbanit').disabled = isRabbanit();
   fillPeopleSelect(document.getElementById('closingCloser'), item ? item.closerId : '', 'ברירת מחדל (אני)');
   var text = document.getElementById('closingCloserText');
@@ -676,7 +677,7 @@ function openEventModal(id) {
   setVal('eventHouse', item ? item.houseNumber : '');
   setVal('eventPhone', item ? item.phone : '');
   setVal('eventAt', item ? toLocalInput(item.eventAt) : '');
-  fillRabbanitSelect(document.getElementById('eventRabbanit'), item ? item.rabbanit : '', true);
+  fillRabbanitSelect(document.getElementById('eventRabbanit'), item ? item.rabbanit : '', 'ללא רבנית');
   setVal('eventFundraiser', item ? item.fundraiser : '');
   setVal('eventOrders', item ? item.standingOrders : 0);
   setVal('eventCash', item ? item.cash : 0);
@@ -741,20 +742,8 @@ function renderUsers() {
     return '<tr><td>' + esc(user.username) + '</td><td>' + esc(user.name) + '</td><td>' + esc(roleLabel(user.role)) + '</td><td>' + esc(user.role === 'rabbanit' ? ((linked && linked.name) || '-') : '-') + '</td><td>' + (user.active === false ? 'מושבת' : 'פעיל') + '</td><td><button type="button" class="btn" data-edit-user="' + esc(user.id) + '">עריכה</button>' + (self ? '' : ' <button type="button" class="btn" style="background:#dc2626;" data-del-user="' + esc(user.id) + '">מחק</button>') + '</td></tr>';
   }).join('');
 }
-function fillUserRabbaniya(selected) {
-  var html = '<option value="">בחרו רבנית</option>';
-  rabbaniyot.forEach(function (row) {
-    if (row.active === false && row.id !== selected) return;
-    html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.profileId && row.id !== selected ? ' (משויכת)' : '') + '</option>';
-  });
-  var select = document.getElementById('newRabbaniyaId');
-  select.innerHTML = html;
-  select.value = selected || '';
-}
-function toggleRabbanitPick() {
-  var show = document.getElementById('newRole').value === 'rabbanit';
-  document.getElementById('rabbanitPick').style.display = show ? '' : 'none';
-  document.getElementById('newRabbaniyaId').required = show;
+function toggleRabbanitHint() {
+  document.getElementById('rabbanitNameHint').classList.toggle('hidden', document.getElementById('newRole').value !== 'rabbanit');
 }
 function openAddUser() {
   document.getElementById('userForm').reset();
@@ -762,8 +751,7 @@ function openAddUser() {
   document.getElementById('userModalTitle').textContent = 'משתמש חדש';
   document.getElementById('newPassword').required = true;
   document.getElementById('newUserActive').checked = true;
-  fillUserRabbaniya('');
-  toggleRabbanitPick();
+  toggleRabbanitHint();
   document.getElementById('userModal').classList.add('active');
 }
 function openEditUser(id) {
@@ -777,8 +765,7 @@ function openEditUser(id) {
   setVal('newRole', user.role || 'activist');
   document.getElementById('newPassword').required = false;
   document.getElementById('newUserActive').checked = user.active !== false;
-  fillUserRabbaniya(user.rabbaniyaId || '');
-  toggleRabbanitPick();
+  toggleRabbanitHint();
   document.getElementById('userModal').classList.add('active');
 }
 function onSaveUser(e) { e.preventDefault(); saveUserForm(); return false; }
@@ -792,7 +779,6 @@ async function saveUserForm() {
       password: val('newPassword'),
       name: val('newDisplayName'),
       role: val('newRole'),
-      rabbaniyaId: val('newRabbaniyaId'),
       active: document.getElementById('newUserActive').checked
     });
     if (currentUser && id === currentUser.id) {
@@ -881,7 +867,7 @@ document.getElementById('usersList').addEventListener('click', function (e) {
     if (confirm('למחוק את המשתמש?')) ZoharData.deleteUser(del.getAttribute('data-del-user')).then(reloadData).then(renderUsers).catch(function (err) { alert(err.message); });
   }
 });
-document.getElementById('newRole').addEventListener('change', toggleRabbanitPick);
+document.getElementById('newRole').addEventListener('change', toggleRabbanitHint);
 ZoharData.onChange(function () {
   if (!currentUser || document.querySelector('.modal.active')) return;
   reloadData().then(function () {

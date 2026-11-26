@@ -86,7 +86,7 @@
     var code = String(payload && (payload.error || payload.code || payload.message) || '');
     var messages = {
       username_taken: 'שם המשתמש כבר תפוס',
-      rabbaniya_id_required: 'יש לבחור רבנית מהרשימה',
+      rabbaniya_id_required: 'לא ניתן ליצור את הרבנית. נסו שוב.',
       rabbaniya_already_linked: 'הרבנית הזו כבר משויכת למשתמש אחר',
       rabbaniya_not_found: 'הרבנית לא נמצאה',
       cannot_change_own_role: 'אי אפשר לשנות את התפקיד של עצמך',
@@ -362,11 +362,9 @@
       var allowed = { admin: true, activist: true, rabbanit: true, call_center: true };
       var role = input && allowed[input.role] ? input.role : '';
       var password = input && input.password ? String(input.password) : '';
-      var rabbaniyaId = String(input && input.rabbaniyaId || '').trim();
       var active = !(input && input.active === false);
       if (!validUsername(username)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
       if (!name || !role) throw new Error('מלאו את השדות החובה');
-      if (role === 'rabbanit' && !UUID.test(rabbaniyaId)) throw new Error('יש לבחור רבנית מהרשימה');
       if (input && input.create) {
         if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
         await adminUsers({
@@ -375,8 +373,7 @@
           password: password,
           display_name: name,
           role: role,
-          active: active,
-          rabbaniya_id: role === 'rabbanit' ? rabbaniyaId : undefined
+          active: active
         });
         return;
       }
@@ -387,9 +384,9 @@
         username: username,
         display_name: name,
         role: role,
-        active: active,
-        rabbaniya_id: role === 'rabbanit' ? rabbaniyaId : null
+        active: active
       };
+      if (role !== 'rabbanit') body.rabbaniya_id = null;
       if (password) {
         if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
         body.password = password;

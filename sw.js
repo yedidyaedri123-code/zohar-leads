@@ -1,5 +1,5 @@
 /* App-shell cache. CRM/API reads stay network-first and are not stored. */
-var CACHE = 'zohar-shell-v4';
+var CACHE = 'zohar-shell-v5';
 var SHELL = [
   '/',
   '/index.html',
