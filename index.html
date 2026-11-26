@@ -2,694 +2,922 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>לידים</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e3a8a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="לידים">
+<title>לידים – זוהר</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/icons/icon-192.png" type="image/png" sizes="192x192">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; }
-body { font-family: 'Heebo', sans-serif; background: #f1f5f9; margin: 0; color: #1e293b; }
-.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+body { font-family: 'Heebo', sans-serif; background: #f1f5f9; margin: 0; color: #1e293b; padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: calc(1rem + env(safe-area-inset-top)) 1rem calc(1rem + env(safe-area-inset-bottom)); }
 .login-box { background: white; padding: 2rem; border-radius: 16px; width: 90%; max-width: 380px; }
 .login-box h1 { text-align: center; color: #1e3a8a; margin: 0 0 1.5rem; }
 .form-group { margin-bottom: 0.9rem; }
 .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; }
-.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.65rem; border: 1px solid #e2e8f0; border-radius: 8px; font-family: inherit; }
-.btn { background: #1e3a8a; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
-.btn:hover { background: #1e40af; }
-.btn-wa { background: #25D366; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.7rem; border: 1px solid #e2e8f0; border-radius: 8px; font-family: inherit; font-size: 1rem; }
+.form-group input[type="checkbox"] { width: auto; padding: 0; }
+input:disabled, select:disabled, textarea:disabled { background: #f8fafc; color: #334155; opacity: 1; }
+.btn { background: #1e3a8a; color: white; border: none; padding: 0.7rem 1.1rem; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 1rem; }
 .btn-outline { background: transparent; color: #1e3a8a; border: 1.5px solid #1e3a8a; }
-.header { background: #1e3a8a; color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-.container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
-.tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
-.tab { padding: 0.6rem 1rem; background: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
-.tab.active { background: #1e3a8a; color: white; }
+.header { background: #1e3a8a; color: white; padding: calc(0.8rem + env(safe-area-inset-top)) 1rem 0.8rem; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.header h1 { margin: 0; font-size: 1.2rem; }
+.header .btn { background: transparent; border: 1px solid white; padding: 0.45rem 0.7rem; font-size: 0.85rem; }
+.container { max-width: 720px; margin: 0 auto; padding: 0.8rem 0.8rem calc(5.2rem + env(safe-area-inset-bottom)); }
+.page-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 0.7rem; }
+.page-head h2 { margin: 0; font-size: 1.25rem; }
+.toolbar { display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.toolbar select, .toolbar .btn { flex: 1 1 140px; min-width: 0; }
+.cards { display: flex; flex-direction: column; gap: 0.65rem; }
+.card { background: white; border-radius: 14px; padding: 0.9rem; border-right: 4px solid #1e3a8a; box-shadow: 0 1px 2px rgba(15,23,42,.05); }
+.card h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
+.card p { margin: 0.12rem 0; color: #475569; font-size: 0.92rem; }
+.card .row { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.65rem; }
+.badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+.badge.ok { background: #d1fae5; color: #065f46; }
+.badge.no { background: #fee2e2; color: #991b1b; }
+.badge.muted { background: #e2e8f0; color: #334155; }
+.group-title { margin: 0.8rem 0 0.35rem; color: #1e3a8a; font-size: 0.95rem; }
+.bottom-nav { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: flex; background: white; border-top: 1px solid #e2e8f0; padding: 0.35rem 0.3rem calc(0.35rem + env(safe-area-inset-bottom)); }
+.bottom-nav button { flex: 1; border: none; background: transparent; font-family: inherit; font-weight: 700; color: #64748b; padding: 0.55rem 0.2rem; border-radius: 10px; font-size: 0.82rem; }
+.bottom-nav button.active { background: #1e3a8a; color: white; }
 .hidden { display: none !important; }
-.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; margin-bottom: 1rem; }
-.stat-card { background: white; border-radius: 10px; padding: 0.9rem; text-align: center; }
-.stat-card .num { font-size: 1.5rem; font-weight: 700; color: #1e3a8a; }
-.toolbar { background: white; padding: 0.7rem; border-radius: 10px; margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
-table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
-th, td { padding: 0.7rem; text-align: right; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
-th { background: #f8fafc; }
-.status { padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
-.status.open { background: #dbeafe; color: #1d4ed8; }
-.status.closed { background: #d1fae5; color: #065f46; }
-.status.not-closed { background: #fee2e2; color: #991b1b; }
-.status.cancelled { background: #f3e8ff; color: #6b21a8; }
-.urgent { background: #fef2f2 !important; }
-.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000; align-items: flex-end; justify-content: center; }
 .modal.active { display: flex; }
-.modal-content { background: white; padding: 1.3rem; border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
-.report-card { background: white; border-radius: 10px; padding: 1rem; margin-bottom: 0.7rem; }
-.cal-item { background: white; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem; border-right: 4px solid #1e3a8a; }
+.modal-content { background: white; padding: 1.1rem 1.1rem calc(1rem + env(safe-area-inset-bottom)); border-radius: 16px 16px 0 0; width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; }
+.table-wrap { width: 100%; overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
+th, td { padding: 0.65rem; text-align: right; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+th { background: #f8fafc; }
+.install-bar { position: fixed; z-index: 40; left: 0; right: 0; bottom: calc(3.6rem + env(safe-area-inset-bottom)); display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; background: #fff; border-top: 1px solid #e2e8f0; padding: 0.55rem 0.7rem; text-align: center; }
+.install-ios { margin: 0; font-size: 0.88rem; }
+.hint { color: #64748b; font-size: 0.88rem; margin: 0 0 1rem; text-align: center; }
+.lock-actions { display: flex; flex-direction: column; gap: 0.55rem; }
+.lock-actions .btn { line-height: 1.35; }
+.lock-error { color: #991b1b; font-size: 0.92rem; margin: 0 0 0.8rem; text-align: center; }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 0.8rem; }
+.switch-row input { width: 1.25rem; height: 1.25rem; }
+body[data-role="activist"] .nav-leads,
+body[data-role="activist"] .nav-closings,
+body[data-role="activist"] .nav-admin,
+body[data-role="call_center"] .nav-events,
+body[data-role="call_center"] .nav-admin,
+body[data-role="rabbanit"] .nav-admin,
+body:not([data-role="admin"]) .admin-only,
+body:not([data-role="admin"]):not([data-role="call_center"]) .closer-tools { display: none !important; }
+@media (min-width: 800px) {
+  .modal { align-items: center; }
+  .modal-content { border-radius: 16px; margin: 1rem; }
+}
 </style>
 </head>
 <body>
-
 <div id="loginScreen" class="login-screen">
   <div class="login-box">
     <h1>לידים</h1>
-    <div style="text-align:center; margin-bottom:1rem;">
-      <img src="https://zohar-harashbi.co.il/wp-content/uploads/cropped-%D7%AA%D7%9E%D7%95%D7%A0%D7%94_%D7%A9%D7%9C_WhatsApp__2025-07-30_%D7%91%D7%A9%D7%A2%D7%94_10.04.33_da67cc47-removebg-preview.png" alt="לוגו" style="height:80px;">
+    <div style="text-align:center;margin-bottom:1rem;"><img src="icons/icon-192.png" alt="לוגו" style="height:72px;"></div>
+    <form id="loginForm" onsubmit="return onLogin(event);">
+      <div class="form-group"><label>שם משתמש</label><input id="loginUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="username"></div>
+      <p style="font-size:0.8rem;color:#64748b;margin:-0.3rem 0 0.8rem;">שם משתמש באנגלית</p>
+      <div class="form-group"><label>סיסמה</label><input id="loginPass" type="password" autocomplete="current-password"></div>
+      <button class="btn" type="submit" style="width:100%;">כניסה</button>
+    </form>
+  </div>
+</div>
+
+<div id="lockScreen" class="login-screen hidden">
+  <div class="login-box">
+    <h1>החשבון נעול</h1>
+    <p id="lockUser" class="hint"></p>
+    <p id="lockError" class="lock-error hidden"></p>
+    <div class="lock-actions">
+      <button type="button" class="btn" id="lockBiometric">כניסה עם טביעת אצבע /<br>זיהוי פנים</button>
+      <button type="button" class="btn btn-outline" id="lockPassword">כניסה עם סיסמה</button>
     </div>
-    <div class="form-group"><label>שם משתמש</label><input type="text" id="loginUser" placeholder="שם משתמש" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('loginPass').focus();}"></div>
-    <div class="form-group"><label>סיסמה</label><input type="password" id="loginPass" placeholder="סיסמה" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}"></div>
-    <button class="btn" style="width:100%;" onclick="doLogin()">כניסה</button>
   </div>
 </div>
 
 <div id="app" class="hidden">
   <div class="header">
-    <div>
-      <h1 style="margin:0; font-size:1.3rem;">לידים</h1>
-      <small id="userInfo"></small>
+    <div><h1>לידים</h1><small id="userInfo"></small></div>
+    <div style="display:flex;gap:0.35rem;">
+      <button type="button" class="btn" onclick="openSettings()">הגדרות</button>
+      <button type="button" class="btn" onclick="doLogout()">יציאה</button>
     </div>
-    <button class="btn" style="background:transparent; border:1px solid white;" onclick="doLogout()">יציאה</button>
   </div>
   <div class="container">
-    <div class="tabs">
-      <button class="tab active" onclick="switchTab('leads')">לידים</button>
-      <button class="tab" onclick="switchTab('reports')">דוחות + ROI</button>
-      <button class="tab" onclick="switchTab('calendar')">לוח שנה</button>
-      <button class="tab" onclick="switchTab('whatsapp')">וואטסאפ</button>
-      <button class="tab" onclick="switchTab('users')">ניהול משתמשים</button>
-    </div>
-
-    <div id="panel-leads">
-      <div class="stats" id="stats"></div>
+    <section id="panel-leads">
+      <div class="page-head"><h2>לידים</h2><button type="button" class="btn" onclick="openLeadModal()">+ ליד</button></div>
       <div class="toolbar">
-        <button class="btn" onclick="openLeadModal()">+ הוסף ליד חדש</button>
-        <input type="text" id="search" placeholder="חיפוש..." oninput="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
-        <select id="filterStatus" onchange="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
-          <option value="">כל הסטטוסים</option>
-          <option value="open">פתוח</option>
-          <option value="closed">נסגר</option>
-          <option value="not-closed">לא נסגר</option>
-          <option value="cancelled">ביטל</option>
-        </select>
-        <select id="filterRabbanit" onchange="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
-          <option value="">כל הרבניות</option>
-        </select>
-        <button class="btn" style="background:#0f766e;" onclick="openSheetsModal()">סנכרון גוגל שיטס</button>
-        <button class="btn btn-outline" onclick="exportCSV()">ייצוא</button>
+        <input id="leadSearch" placeholder="חיפוש שם או טלפון" oninput="renderLeads()" style="flex:1 1 100%;padding:0.65rem;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;">
+        <select id="filterLeadStatus" onchange="renderLeads()"><option value="">כל הסטטוסים</option><option value="closed">נסגר</option><option value="not_closed">לא נסגר</option></select>
+        <select id="filterRabbanit" class="closer-tools" onchange="renderLeads()"><option value="">כל הרבניות</option><option value="general">לידים כלליים</option></select>
+        <select id="filterCloser" class="admin-only" onchange="renderLeads()"><option value="">כל הסוגרות</option></select>
+        <button type="button" class="btn btn-outline admin-only" id="myLeadsBtn" onclick="showMyLeads()">הלידים שלי</button>
+        <button type="button" class="btn btn-outline admin-only" id="groupCloserBtn" onclick="toggleGroupLeads()">קבץ לפי סוגרת</button>
       </div>
-      <table>
-        <thead>
-          <tr><th>שם</th><th>טלפון</th><th>מקור</th><th id="costHeader">עלות</th><th>סטטוס</th><th>הוראות קבע</th><th>מזומן</th><th>סטטוס קבע</th><th>רבנית</th><th>תאריך חוג</th><th>פעולות</th></tr>
-        </thead>
-        <tbody id="leadsBody"></tbody>
-      </table>
-    </div>
+      <div id="leadCards" class="cards"></div>
+    </section>
 
-    <div id="panel-reports" class="hidden">
-      <h2>דוחות + ROI</h2>
-      <div id="roiBox" class="report-card"></div>
-      <div id="reportsContainer"></div>
-      <button class="btn" style="margin-top:1rem;" onclick="generateWeeklyReport()">צור דוח שבועי</button>
-      <div id="weeklyReport" style="margin-top:1rem; background:white; padding:1rem; border-radius:10px; white-space:pre-wrap;"></div>
-    </div>
-
-    <div id="panel-calendar" class="hidden">
-      <h2>לוח שנה – חוגים קרובים</h2>
-      <div id="calendarContainer"></div>
-    </div>
-
-    <div id="panel-whatsapp" class="hidden">
-      <h2>תבניות וואטסאפ</h2>
-      <div class="report-card">
-        <select id="templateSelect" onchange="loadTemplate()" style="margin-bottom:0.5rem; padding:0.5rem; width:100%;">
-          <option value="invite">הזמנה לחוג בית</option>
-          <option value="reminder">תזכורת</option>
-          <option value="thanks">תודה אחרי חוג</option>
-        </select>
-        <select id="waRabbanitFilter" style="margin-bottom:0.5rem; padding:0.5rem; width:100%;">
-          <option value="">כל הרבניות / כל החוגים</option>
-        </select>
-        <textarea id="waTemplate" rows="6" style="width:100%;"></textarea>
-        <p style="font-size:0.85rem; color:#64748b;">משתנים: {name}, {rabbanit}, {date}</p>
-        <button class="btn btn-wa" onclick="sendWAToOpen()">שלח לפי בחירה</button>
+    <section id="panel-closings" class="hidden">
+      <div class="page-head"><h2>סגירת חוגי בית</h2><button type="button" class="btn" onclick="openClosingModal()">+ סגירה</button></div>
+      <div class="toolbar">
+        <button type="button" class="btn btn-outline" id="myClosingsBtn" onclick="showMyClosings()">הסגירות שלי</button>
+        <select id="filterClosingCloser" class="admin-only" onchange="renderClosings()"><option value="">כל הסוגרות</option></select>
+        <select id="filterClosingRabbanit" class="closer-tools" onchange="renderClosings()"><option value="">כל הרבניות</option></select>
       </div>
-    </div>
+      <div id="closingCards" class="cards"></div>
+    </section>
 
-    <div id="panel-users" class="hidden">
-      <h2>ניהול משתמשים</h2>
-      <div class="toolbar"><button class="btn" onclick="openAddUser()">+ הוסף משתמש</button></div>
-      <table>
-        <thead><tr><th>שם משתמש</th><th>שם</th><th>שיוך</th><th>פעולות</th></tr></thead>
-        <tbody id="usersList"></tbody>
-      </table>
-    </div>
+    <section id="panel-events" class="hidden">
+      <div class="page-head"><h2>אירועים</h2><button type="button" class="btn admin-only" onclick="openEventModal()">+ אירוע</button></div>
+      <div id="eventCards" class="cards"></div>
+    </section>
+
+    <section id="panel-rabbaniyot" class="hidden">
+      <div class="page-head"><h2>רבניות</h2><button type="button" class="btn" onclick="openRabbaniyaModal()">+ רבנית</button></div>
+      <div class="table-wrap"><table><thead><tr><th>שם</th><th>סטטוס</th><th>קישור</th><th></th></tr></thead><tbody id="rabbaniyotList"></tbody></table></div>
+    </section>
+
+    <section id="panel-users" class="hidden">
+      <div class="page-head"><h2>משתמשים</h2><button type="button" class="btn" onclick="openAddUser()">+ משתמש</button></div>
+      <div class="table-wrap"><table><thead><tr><th>משתמש</th><th>שם</th><th>תפקיד</th><th>רבנית</th><th>סטטוס</th><th></th></tr></thead><tbody id="usersList"></tbody></table></div>
+    </section>
   </div>
+  <nav class="bottom-nav" id="bottomNav">
+    <button type="button" class="nav-leads active" data-tab="leads">לידים</button>
+    <button type="button" class="nav-closings" data-tab="closings">סגירות</button>
+    <button type="button" class="nav-events" data-tab="events">אירועים</button>
+    <button type="button" class="nav-admin" data-tab="rabbaniyot">רבניות</button>
+    <button type="button" class="nav-admin" data-tab="users">משתמשים</button>
+  </nav>
 </div>
 
-<!-- Lead Modal -->
-<div class="modal" id="leadModal">
-  <div class="modal-content">
-    <h3 id="leadModalTitle">ליד חדש</h3>
-    <form onsubmit="saveLead(event)">
-      <input type="hidden" id="leadId">
-      <div class="form-group"><label>שם</label><input id="leadName" required></div>
-      <div class="form-group"><label>טלפון</label><input id="leadPhone" required></div>
-      <div class="form-group"><label>אימייל</label><input id="leadEmail" type="email"></div>
-      <div class="form-group"><label>מקור / קמפיין</label><input id="leadSource"></div>
-      <div class="form-group"><label>עלות (₪)</label><input id="leadCost" type="number" value="0"></div>
-      <div class="form-group"><label>סטטוס</label>
-        <select id="leadStatus">
-          <option value="open">פתוח</option>
-          <option value="closed">נסגר חוג בית</option>
-          <option value="not-closed">לא נסגר</option>
-          <option value="cancelled">ביטל</option>
-        </select>
-      </div>
-      <div class="form-group"><label>הוראות קבע (מספר)</label><input id="leadOrders" type="number" value="0"></div>
-      <div class="form-group"><label>מזומן שהתקבל בערב (₪)</label><input id="leadCash" type="number" value="0"></div>
-      <div class="form-group"><label>סטטוס הוראת קבע</label>
-        <select id="leadOrderStatus">
-          <option value="">לא רלוונטי</option>
-          <option value="active">פעילה</option>
-          <option value="inactive">לא פעילה</option>
-          <option value="pending">ממתינה</option>
-        </select>
-      </div>
-      <div class="form-group"><label>סכום חודשי מהוראת קבע (₪)</label><input id="leadMonthlyAmount" type="number" value="0"></div>
-      <div class="form-group"><label>רבנית</label><input id="leadRabbanit"></div>
-      <div class="form-group"><label>תאריך חוג בית</label><input id="leadEventDate" type="date"></div>
-      <div class="form-group"><label>הערות</label><textarea id="leadNotes" rows="2"></textarea></div>
-      <div id="historyBox" style="margin:0.5rem 0; max-height:100px; overflow-y:auto; font-size:0.8rem; color:#64748b;"></div>
-      <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-        <button type="button" class="btn" style="background:#64748b;" onclick="closeLeadModal()">ביטול</button>
-        <button type="submit" class="btn">שמירה</button>
-      </div>
-    </form>
-  </div>
-</div>
+<div class="modal" id="leadModal"><div class="modal-content">
+  <h3 id="leadModalTitle">ליד</h3>
+  <form id="leadForm" onsubmit="return onSaveLead(event);">
+    <input type="hidden" id="leadId">
+    <div class="form-group"><label>שם</label><input id="leadName" required></div>
+    <div class="form-group"><label>עיר</label><input id="leadCity"></div>
+    <div class="form-group"><label>טלפון</label><input id="leadPhone"></div>
+    <div class="form-group" id="leadRabbanitGroup"><label>רבנית מארחת</label><select id="leadRabbanit"></select></div>
+    <div class="form-group admin-only" id="leadCloserGroup"><label>סוגרת</label><select id="leadCloser"></select></div>
+    <p id="leadCloserText" class="hidden" style="color:#475569;"></p>
+    <div class="form-group"><label>סטטוס</label><select id="leadStatus"><option value="not_closed">לא נסגר</option><option value="closed">נסגר</option></select></div>
+    <div class="form-group"><label>הערות</label><textarea id="leadNotes" rows="2"></textarea></div>
+    <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;"><button type="button" class="btn" style="background:#64748b;" onclick="closeModal('leadModal')">ביטול</button><button class="btn" type="submit">שמירה</button></div>
+  </form>
+</div></div>
 
-<!-- User Modal -->
-<div class="modal" id="userModal">
-  <div class="modal-content">
-    <h3>הוספת רבנית</h3>
-    <form onsubmit="saveNewUser(event)">
-      <div class="form-group"><label>שם משתמש</label><input id="newUsername" required></div>
-      <div class="form-group"><label>סיסמה</label><input id="newPassword" required></div>
-      <div class="form-group"><label>שם להצגה</label><input id="newDisplayName" required></div>
-      <div class="form-group"><label>שם לשיוך (לרבנית)</label><input id="newRabbanit" placeholder="השאר ריק לפעיל"></div>
-      <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-        <button type="button" class="btn" style="background:#64748b;" onclick="closeUserModal()">ביטול</button>
-        <button type="submit" class="btn">שמירה</button>
-      </div>
-    </form>
-  </div>
-</div>
+<div class="modal" id="closingModal"><div class="modal-content">
+  <h3 id="closingModalTitle">סגירת חוג בית</h3>
+  <form id="closingForm" onsubmit="return onSaveClosing(event);">
+    <input type="hidden" id="closingId">
+    <div class="form-group"><label>ליד מקושר (רשות)</label><select id="closingLead"></select></div>
+    <div class="form-group"><label>עיר</label><input id="closingCity" required></div>
+    <div class="form-group"><label>רחוב</label><input id="closingStreet"></div>
+    <div class="form-group"><label>מספר בית</label><input id="closingHouse"></div>
+    <div class="form-group"><label>טלפון</label><input id="closingPhone" required></div>
+    <div class="form-group" id="closingRabbanitGroup"><label>רבנית מארחת</label><select id="closingRabbanit"></select></div>
+    <div class="form-group"><label>תאריך סגירה</label><input id="closingClosedOn" type="date"></div>
+    <div class="form-group"><label>תאריך ושעת האירוע</label><input id="closingEventAt" type="datetime-local" required></div>
+    <div class="form-group admin-only"><label>סוגרת</label><select id="closingCloser"></select></div>
+    <p id="closingCloserText" class="hidden" style="color:#475569;"></p>
+    <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;"><button type="button" class="btn" style="background:#64748b;" onclick="closeModal('closingModal')">ביטול</button><button class="btn" type="submit">שמירה</button></div>
+  </form>
+</div></div>
 
-<!-- Sheets Modal -->
-<div class="modal" id="sheetsModal">
-  <div class="modal-content">
-    <h3>סנכרון מגוגל שיטס</h3>
-    <div class="form-group"><label>קישור הגיליון</label><input id="sheetsUrl"></div>
-    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-      <button type="button" class="btn" style="background:#64748b;" onclick="document.getElementById('sheetsModal').classList.remove('active')">סגור</button>
-      <button class="btn" onclick="syncSheets()">סנכרן</button>
+<div class="modal" id="eventModal"><div class="modal-content">
+  <h3 id="eventModalTitle">אירוע</h3>
+  <form id="eventForm" onsubmit="return onSaveEvent(event);">
+    <input type="hidden" id="eventId">
+    <input type="hidden" id="eventHomeClass">
+    <p id="eventSynced" style="color:#475569;"></p>
+    <div id="eventManualFields" class="hidden">
+      <div class="form-group"><label>עיר</label><input id="eventCity"></div>
+      <div class="form-group"><label>רחוב</label><input id="eventStreet"></div>
+      <div class="form-group"><label>מספר בית</label><input id="eventHouse"></div>
+      <div class="form-group"><label>טלפון</label><input id="eventPhone"></div>
+      <div class="form-group"><label>תאריך ושעה</label><input id="eventAt" type="datetime-local"></div>
     </div>
-    <div id="syncStatus"></div>
+    <div class="form-group"><label>רבנית מארחת</label><select id="eventRabbanit"></select></div>
+    <div class="form-group"><label>מתרים</label><input id="eventFundraiser"></div>
+    <div class="form-group"><label>הוראות קבע (מספר)</label><input id="eventOrders" type="number" min="0" value="0"></div>
+    <div class="form-group"><label>מזומן (₪)</label><input id="eventCash" type="number" min="0" value="0"></div>
+    <div class="form-group"><label><input type="checkbox" id="eventDidNot"> לא התקיים</label></div>
+    <div class="form-group admin-only"><label>פעיל</label><select id="eventActivist"></select></div>
+    <div id="eventFinance" class="admin-only">
+      <div class="form-group"><label>עלות (₪)</label><input id="eventCost" type="number" value="0"></div>
+      <div class="form-group"><label>עלות חוג (₪)</label><input id="eventEventCost" type="number" value="0"></div>
+      <div class="form-group"><label>תרומה חד-פעמית (₪)</label><input id="eventOneTime" type="number" value="0"></div>
+      <div class="form-group"><label>סכום חודשי (₪)</label><input id="eventMonthly" type="number" value="0"></div>
+      <div class="form-group"><label>תאריך התחלת הוראת קבע</label><input id="eventOrderStart" type="date"></div>
+    </div>
+    <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;"><button type="button" class="btn" style="background:#64748b;" onclick="closeModal('eventModal')">ביטול</button><button class="btn" type="submit">שמירה</button></div>
+  </form>
+</div></div>
+
+<div class="modal" id="rabbaniyaModal"><div class="modal-content">
+  <h3 id="rabbaniyaModalTitle">רבנית</h3>
+  <form id="rabbaniyaForm" onsubmit="return onSaveRabbaniya(event);">
+    <input type="hidden" id="rabbaniyaId">
+    <div class="form-group"><label>שם</label><input id="rabbaniyaName" required></div>
+    <div class="form-group"><label><input type="checkbox" id="rabbaniyaActive" checked> פעילה</label></div>
+    <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;"><button type="button" class="btn" style="background:#64748b;" onclick="closeModal('rabbaniyaModal')">ביטול</button><button class="btn" type="submit">שמירה</button></div>
+  </form>
+</div></div>
+
+<div class="modal" id="userModal"><div class="modal-content">
+  <h3 id="userModalTitle">משתמש</h3>
+  <form id="userForm" onsubmit="return onSaveUser(event);" autocomplete="off">
+    <div class="form-group"><label>שם משתמש</label><input id="newUsername" autocapitalize="none" required></div>
+    <div class="form-group"><label>סיסמה</label><input id="newPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password"></div>
+    <div class="form-group"><label>שם להצגה</label><input id="newDisplayName" required></div>
+    <div class="form-group"><label>תפקיד</label>
+      <select id="newRole"><option value="admin">מנהל</option><option value="activist">פעיל</option><option value="rabbanit">רבנית</option><option value="call_center">מוקד</option></select>
+    </div>
+    <div class="form-group" id="rabbanitPick"><label>רבנית מהרשימה</label><select id="newRabbaniyaId"></select></div>
+    <div class="form-group"><label><input type="checkbox" id="newUserActive" checked> משתמש פעיל</label></div>
+    <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;"><button type="button" class="btn" style="background:#64748b;" onclick="closeModal('userModal')">ביטול</button><button class="btn" type="submit">שמירה</button></div>
+  </form>
+</div></div>
+
+<div class="modal" id="settingsModal"><div class="modal-content">
+  <h3>הגדרות</h3>
+  <div id="bioSetting" class="hidden">
+    <label class="switch-row"><span>כניסה עם טביעת אצבע / זיהוי פנים</span><input type="checkbox" id="bioToggle"></label>
+    <p class="hint">ההפעלה נשמרת במכשיר הזה בלבד. בפתיחה הבאה החשבון יינעל עד לאימות.</p>
   </div>
+  <div class="row" style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+    <button type="button" class="btn" onclick="closeModal('settingsModal'); openOwnPassword();">הסיסמה שלי</button>
+    <button type="button" class="btn" style="background:#64748b;" onclick="closeModal('settingsModal')">סגירה</button>
+  </div>
+</div></div>
+
+<div class="modal" id="bioOffer"><div class="modal-content">
+  <h3>כניסה עם טביעת אצבע / זיהוי פנים</h3>
+  <p>אחרי הכניסה עם סיסמה אפשר לפתוח את האפליקציה במכשיר הזה עם טביעת אצבע או זיהוי פנים.</p>
+  <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;flex-wrap:wrap;">
+    <button type="button" class="btn" style="background:#64748b;" id="bioLater">לא עכשיו</button>
+    <button type="button" class="btn" id="bioEnable">הפעלה</button>
+  </div>
+</div></div>
+
+<div class="modal" id="passwordModal"><div class="modal-content">
+  <h3>הסיסמה שלי</h3>
+  <form onsubmit="return onOwnPassword(event);">
+    <div class="form-group"><label>סיסמה חדשה</label><input id="ownPassword" type="password" minlength="8" maxlength="72" required></div>
+    <div class="form-group"><label>אימות</label><input id="ownPassword2" type="password" minlength="8" maxlength="72" required></div>
+    <div class="row" style="display:flex;gap:0.4rem;justify-content:flex-end;"><button type="button" class="btn" style="background:#64748b;" onclick="closeModal('passwordModal')">ביטול</button><button class="btn" type="submit">שמירה</button></div>
+  </form>
+</div></div>
+
+<div id="installBar" class="install-bar hidden">
+  <p id="installIos" class="install-ios hidden">באייפון: לחצו על כפתור השיתוף ואז „הוסף למסך הבית”.</p>
+  <button type="button" id="installBtn" class="btn hidden">התקן את האפליקציה</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="data.js"></script>
+<script src="biometric.js"></script>
 <script>
-const TEMPLATES = {
-  invite: `שלום {name},\nאנחנו מזוהר הרשבי שמחים להזמין אותך לחוג בית של הפרשת חלה אצל הרבנית {rabbanit}.\nנשמח לשמוע ממך!`,
-  reminder: `שלום {name},\nתזכורת: החוג בית אצל הרבנית {rabbanit} מתקיים בקרוב.\nנשמח לראותך!`,
-  thanks: `שלום {name},\nתודה שהשתתפת בחוג הבית של הרבנית {rabbanit}!\nנשמח אם תוכלי להמליץ לחברות נוספות.`
-};
-
-let leads = JSON.parse(localStorage.getItem('zohar_leads') || '[]');
-let users = JSON.parse(localStorage.getItem('zohar_users') || '{}');
-if (!users['מנהל']) {
-  users['מנהל'] = { pass: 'מנהל123', name: 'מנהל', role: 'admin', rabbanit: '' };
+'use strict';
+var leads = [], classes = [], events = [], rabbaniyot = [], users = [];
+var currentUser = null, groupLeads = false, mineClosings = false, initError = null, deferredInstall = null;
+var lockedUser = null, bioBusy = false, bioSupported = false;
+function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function isAdmin() { return !!(currentUser && currentUser.role === 'admin'); }
+function isActivist() { return !!(currentUser && currentUser.role === 'activist'); }
+function isCallCenter() { return !!(currentUser && currentUser.role === 'call_center'); }
+function isRabbanit() { return !!(currentUser && currentUser.role === 'rabbanit'); }
+function roleLabel(role) { return { admin: 'מנהל', activist: 'פעיל', rabbanit: 'רבנית', call_center: 'מוקד' }[role] || 'משתמש'; }
+function setVal(id, value) { var el = document.getElementById(id); if (el) el.value = value == null ? '' : value; }
+function val(id) { var el = document.getElementById(id); return el ? el.value : ''; }
+function rabbanitName(id) {
+  if (!id) return '';
+  var row = rabbaniyot.find(function (item) { return item.id === id; });
+  if (row) return row.name + (row.active === false ? ' (לא פעילה)' : '');
+  var lead = leads.concat(classes).concat(events).find(function (item) { return item.rabbanit === id && item.rabbanitName; });
+  return lead ? lead.rabbanitName : '';
 }
-if (!users['פעיל']) {
-  users['פעיל'] = { pass: 'פעיל123', name: 'פעיל', role: 'operator', rabbanit: '' };
+function personName(id) {
+  if (!id) return '';
+  if (currentUser && id === currentUser.id) return currentUser.name || currentUser.username;
+  var person = users.find(function (item) { return item.id === id; });
+  return person ? (person.name || person.username) : 'סוגרת';
 }
-if (users['מפעילה']) delete users['מפעילה'];
-localStorage.setItem('zohar_users', JSON.stringify(users));
-let currentUser = null;
-
-function isAdmin() {
-  return currentUser && currentUser.role === 'admin';
+function addressOf(item) { return [item.street, item.houseNumber, item.city].filter(Boolean).join(' '); }
+function formatWhen(value) {
+  if (!value) return '';
+  var date = new Date(value);
+  return isNaN(date.getTime()) ? '' : date.toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' });
 }
-
-function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value;
-  if (users[u] && users[u].pass === p) {
-    currentUser = { ...users[u], username: u };
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('userInfo').textContent = 'שלום ' + currentUser.name + (isAdmin() ? ' (מנהל)' : (currentUser.role === 'operator' ? ' (פעיל)' : ' (רבנית)'));
-    // Hide financial tabs/elements for non-admin
-    const reportsTab = document.querySelector('.tab[onclick*="reports"]');
-    if (reportsTab) reportsTab.style.display = isAdmin() ? '' : 'none';
-    const usersTab = document.querySelector('.tab[onclick*="users"]');
-    if (usersTab) usersTab.style.display = isAdmin() ? '' : 'none';
-    loadTemplate();
-    renderLeads();
-    if (isAdmin()) renderUsers();
-  } else alert('שם משתמש או סיסמה שגויים');
+function toLocalInput(value) {
+  if (!value) return '';
+  var date = new Date(value);
+  if (isNaN(date.getTime())) return '';
+  var p = function (n) { return String(n).padStart(2, '0'); };
+  return date.getFullYear() + '-' + p(date.getMonth() + 1) + '-' + p(date.getDate()) + 'T' + p(date.getHours()) + ':' + p(date.getMinutes());
 }
-
-function doLogout() {
+function today() { return new Date().toISOString().slice(0, 10); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function canOpen(name) {
+  if (name === 'leads' || name === 'closings') return isAdmin() || isCallCenter() || isRabbanit();
+  if (name === 'events') return isAdmin() || isRabbanit() || isActivist();
+  if (name === 'rabbaniyot' || name === 'users') return isAdmin();
+  return false;
+}
+function defaultTab() {
+  if (isActivist()) return 'events';
+  return 'leads';
+}
+async function reloadData() {
+  leads = await ZoharData.listLeads();
+  classes = await ZoharData.listHomeClasses();
+  events = await ZoharData.listEvents();
+  users = await ZoharData.listUsers();
+  try { rabbaniyot = await ZoharData.listRabbaniyot(); } catch (err) { rabbaniyot = []; }
+}
+async function enterApp(user) {
+  currentUser = user;
+  lockedUser = null;
+  await reloadData();
+  document.body.dataset.role = user.role;
+  document.getElementById('userInfo').textContent = 'שלום ' + user.name + ' (' + roleLabel(user.role) + ')';
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  await refreshBioUi();
+  showTab(defaultTab());
+}
+async function refreshBioUi() {
+  bioSupported = await ZoharBiometric.available();
+  document.getElementById('bioSetting').classList.toggle('hidden', !bioSupported);
+  if (currentUser) document.getElementById('bioToggle').checked = ZoharBiometric.enabled(currentUser.id);
+}
+function openSettings() {
+  refreshBioUi().then(function () {
+    document.getElementById('settingsModal').classList.add('active');
+  });
+}
+function showLock(user) {
+  lockedUser = user;
   currentUser = null;
   document.getElementById('app').classList.add('hidden');
-  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('lockUser').textContent = 'שלום ' + (user.name || user.username || '');
+  document.getElementById('lockError').classList.add('hidden');
+  document.getElementById('lockBiometric').classList.toggle('hidden', !bioSupported);
+  document.getElementById('lockScreen').classList.remove('hidden');
+  if (!/iphone|ipad|ipod/i.test(navigator.userAgent)) unlockWithBiometric(false);
 }
-
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
-  ['leads','reports','calendar','whatsapp','users'].forEach(p => {
-    const el = document.getElementById('panel-' + p);
-    if (el) el.classList.toggle('hidden', p !== name);
+async function unlockWithBiometric(fromUser) {
+  if (!lockedUser || bioBusy) return;
+  var expected = lockedUser.id;
+  bioBusy = true;
+  document.getElementById('lockError').classList.add('hidden');
+  try {
+    await ZoharBiometric.verify(expected);
+    if (!lockedUser || lockedUser.id !== expected) return;
+    var user = lockedUser;
+    lockedUser = null;
+    await enterApp(user);
+  } catch (err) {
+    if (fromUser) {
+      var el = document.getElementById('lockError');
+      el.textContent = err.message || 'האימות בוטל או נכשל. אפשר לנסות שוב או להיכנס עם סיסמה.';
+      el.classList.remove('hidden');
+    }
+  } finally {
+    bioBusy = false;
+  }
+}
+async function unlockWithPassword() {
+  lockedUser = null;
+  await ZoharData.logout();
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginPass').value = '';
+}
+async function enableBiometric() {
+  if (!currentUser) return;
+  try {
+    await ZoharBiometric.register(currentUser);
+    closeModal('bioOffer');
+    await refreshBioUi();
+    alert('האימות הביומטרי הופעל במכשיר הזה');
+  } catch (err) {
+    alert(err.message || 'לא ניתן להפעיל את האימות הביומטרי');
+  }
+}
+async function onBioToggle() {
+  var toggle = document.getElementById('bioToggle');
+  if (!currentUser) { toggle.checked = false; return; }
+  if (toggle.checked) {
+    try {
+      await ZoharBiometric.register(currentUser);
+      alert('האימות הביומטרי הופעל במכשיר הזה');
+    } catch (err) {
+      toggle.checked = ZoharBiometric.enabled(currentUser.id);
+      alert(err.message || 'לא ניתן להפעיל את האימות הביומטרי');
+    }
+    return;
+  }
+  ZoharBiometric.clear(currentUser.id);
+  alert('האימות הביומטרי כובה במכשיר הזה');
+}
+async function maybeOfferBiometric(user) {
+  bioSupported = await ZoharBiometric.available();
+  if (!bioSupported || ZoharBiometric.enabled(user.id)) return;
+  document.getElementById('bioOffer').classList.add('active');
+}
+async function resumeSession() {
+  var existing = ZoharData.session();
+  if (!existing) return;
+  if (ZoharBiometric.enabled(existing.id)) {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.add('hidden');
+    bioSupported = await ZoharBiometric.available();
+    if (bioSupported) {
+      showLock(existing);
+      return;
+    }
+  }
+  return enterApp(existing);
+}
+function showTab(name) {
+  if (!canOpen(name)) name = defaultTab();
+  ['leads', 'closings', 'events', 'rabbaniyot', 'users'].forEach(function (panel) {
+    document.getElementById('panel-' + panel).classList.toggle('hidden', panel !== name);
   });
-  if (name === 'reports') renderReports();
-  if (name === 'calendar') renderCalendar();
+  document.querySelectorAll('#bottomNav button').forEach(function (btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === name);
+  });
+  if (name === 'leads') renderLeads();
+  if (name === 'closings') renderClosings();
+  if (name === 'events') renderEvents();
+  if (name === 'rabbaniyot') renderRabbaniyot();
   if (name === 'users') renderUsers();
 }
-
-function saveLeads() { localStorage.setItem('zohar_leads', JSON.stringify(leads)); }
-
-function updateStats() {
-  const total = leads.length;
-  const closed = leads.filter(l => l.status === 'closed').length;
-  const activeOrders = leads.filter(l => l.orderStatus === 'active').length;
-  let html = `
-    <div class="stat-card"><div class="num">${total}</div><div>לידים</div></div>
-    <div class="stat-card"><div class="num">${closed}</div><div>חוגים שנסגרו</div></div>
-    <div class="stat-card"><div class="num">${activeOrders}</div><div>הוראות קבע פעילות</div></div>
-  `;
-  if (isAdmin()) {
-    const monthlyIncome = leads.filter(l => l.orderStatus === 'active').reduce((s,l) => s + (+l.monthlyAmount||0), 0);
-    const totalCost = leads.reduce((s,l) => s + (+l.cost||0), 0);
-    html += `
-      <div class="stat-card"><div class="num">₪${monthlyIncome.toFixed(0)}</div><div>הכנסה חודשית</div></div>
-      <div class="stat-card"><div class="num">₪${totalCost.toFixed(0)}</div><div>עלות פרסום</div></div>
-    `;
-  }
-  document.getElementById('stats').innerHTML = html;
+function fillRabbanitSelect(select, selected, allowEmpty) {
+  var html = allowEmpty ? '<option value="">ללא רבנית (ליד כללי)</option>' : '<option value="">בחרו רבנית</option>';
+  rabbaniyot.filter(function (row) { return row.active !== false || row.id === selected; }).forEach(function (row) {
+    html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.active === false ? ' (לא פעילה)' : '') + '</option>';
+  });
+  select.innerHTML = html;
+  select.value = selected || '';
 }
-
-function updateRabbanitFilter() {
-  const select = document.getElementById('filterRabbanit');
-  if (!select) return;
-  const current = select.value;
-  const names = [...new Set(leads.map(l => l.rabbanit).filter(Boolean))];
-  select.innerHTML = '<option value="">כל הרבניות</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
-  select.value = current;
+function fillPeopleSelect(select, selected) {
+  var chosen = selected || (currentUser && currentUser.id) || '';
+  var html = '';
+  var seen = false;
+  users.forEach(function (person) {
+    if (person.id === chosen) seen = true;
+    html += '<option value="' + esc(person.id) + '">' + esc(person.name || person.username) + '</option>';
+  });
+  if (chosen && !seen) html = '<option value="' + esc(chosen) + '">' + esc(personName(chosen)) + '</option>' + html;
+  select.innerHTML = html || '<option value="">—</option>';
+  if (chosen) select.value = chosen;
 }
-
+function fillCloserFilters() {
+  ['filterCloser', 'filterClosingCloser'].forEach(function (id) {
+    var select = document.getElementById(id);
+    if (!select || !isAdmin()) return;
+    var current = select.value;
+    var html = '<option value="">כל הסוגרות</option><option value="mine">הסגירות שלי</option>';
+    users.forEach(function (person) {
+      html += '<option value="' + esc(person.id) + '">' + esc(person.name || person.username) + '</option>';
+    });
+    select.innerHTML = html;
+    select.value = current;
+  });
+  var rabbanitFilters = ['filterRabbanit', 'filterClosingRabbanit'];
+  rabbanitFilters.forEach(function (id) {
+    var select = document.getElementById(id);
+    if (!select) return;
+    var current = select.value;
+    var html = '<option value="">כל הרבניות</option>' + (id === 'filterRabbanit' ? '<option value="general">לידים כלליים</option>' : '');
+    rabbaniyot.forEach(function (row) {
+      html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.active === false ? ' (לא פעילה)' : '') + '</option>';
+    });
+    select.innerHTML = html;
+    if ([].slice.call(select.options).some(function (opt) { return opt.value === current; })) select.value = current;
+  });
+}
+function closerMatch(id, filter) {
+  if (!filter) return true;
+  if (filter === 'mine') return id === (currentUser && currentUser.id);
+  return id === filter;
+}
 function renderLeads() {
-  const search = (document.getElementById('search')?.value || '').toLowerCase();
-  const st = document.getElementById('filterStatus')?.value || '';
-  const rab = document.getElementById('filterRabbanit')?.value || '';
-  let filtered = leads.filter(l => {
-    if (currentUser?.role === 'rabbanit' && currentUser.rabbanit && l.rabbanit !== currentUser.rabbanit) return false;
-    const okS = !search || l.name.toLowerCase().includes(search) || (l.phone||'').includes(search);
-    const okSt = !st || l.status === st;
-    const okR = !rab || l.rabbanit === rab;
-    return okS && okSt && okR;
+  fillCloserFilters();
+  var q = (document.getElementById('leadSearch').value || '').trim();
+  var status = document.getElementById('filterLeadStatus').value;
+  var rabbanit = (isAdmin() || isCallCenter()) ? document.getElementById('filterRabbanit').value : '';
+  var closer = isAdmin() ? document.getElementById('filterCloser').value : '';
+  var rows = leads.filter(function (lead) {
+    if (q && (lead.name + lead.phone).indexOf(q) < 0) return false;
+    if (status && lead.status !== status) return false;
+    if (rabbanit === 'general' && lead.rabbanit) return false;
+    if (rabbanit && rabbanit !== 'general' && lead.rabbanit !== rabbanit) return false;
+    if (!closerMatch(lead.closerId, closer)) return false;
+    return true;
   });
-  const statusText = { open:'פתוח', closed:'נסגר', 'not-closed':'לא נסגר', cancelled:'ביטל' };
-  const orderText = { active:'פעילה', inactive:'לא פעילה', pending:'ממתינה' };
-  const now = Date.now();
-  document.getElementById('leadsBody').innerHTML = filtered.map(l => {
-    const daysOpen = l.status === 'open' ? Math.floor((now - new Date(l.createdAt)) / (24*60*60*1000)) : 0;
-    const urgentClass = daysOpen > 3 ? 'urgent' : '';
-    const costCell = isAdmin() ? `<td>₪${(+l.cost||0).toFixed(0)}</td>` : '';
-    return `
-    <tr class="${urgentClass}">
-      <td><strong>${l.name}</strong>${daysOpen > 3 ? ' <span style="color:#dc2626;font-size:0.7rem;">('+daysOpen+' ימים)</span>' : ''}</td>
-      <td>${l.phone||''}</td>
-      <td>${l.source||''}</td>
-      ${costCell}
-      <td><span class="status ${l.status}">${statusText[l.status]||l.status}</span></td>
-      <td>${l.standingOrders||0}</td>
-      <td>₪${(+l.cash||0).toFixed(0)}</td>
-      <td>${orderText[l.orderStatus]||'-'}</td>
-      <td>${l.rabbanit||'-'}</td>
-      <td>${l.eventDate ? new Date(l.eventDate).toLocaleDateString('he-IL') : '-'}</td>
-      <td>
-        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="editLead('${l.id}')">עריכה</button>
-        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#64748b;" onclick="copyLead('${l.id}')">העתק</button>
-        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#f59e0b;" onclick="quickNote('${l.id}')">הערה</button>
-        <button class="btn btn-wa" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="sendWA('${l.id}')">וואטסאפ</button>
-      </td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:2rem;">אין לידים</td></tr>';
-  updateStats();
-  updateRabbanitFilter();
-  // Hide cost column for non-admin
-  const costHeader = document.getElementById('costHeader');
-  if (costHeader) costHeader.style.display = isAdmin() ? '' : 'none';
-}
-
-function renderCalendar() {
-  const upcoming = leads
-    .filter(l => l.eventDate && new Date(l.eventDate) >= new Date().setHours(0,0,0,0))
-    .sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate));
-  document.getElementById('calendarContainer').innerHTML = upcoming.length
-    ? upcoming.map(l => `<div class="cal-item"><strong>${new Date(l.eventDate).toLocaleDateString('he-IL')}</strong> – ${l.name} (${l.rabbanit||'ללא רבנית'})<br><small>${l.phone||''}</small></div>`).join('')
-    : '<p>אין חוגים קרובים מתוכננים</p>';
-}
-
-function copyLead(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  const text = `${l.name}\n${l.phone}`;
-  navigator.clipboard.writeText(text).then(() => alert('הועתק: ' + l.name));
-}
-
-function quickNote(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  const note = prompt('הערה מהירה:', l.notes || '');
-  if (note !== null) {
-    l.notes = note;
-    if (!l.history) l.history = [];
-    l.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: 'הערה עודכנה' });
-    saveLeads();
-    renderLeads();
+  var host = document.getElementById('leadCards');
+  if (!rows.length) { host.innerHTML = '<p>אין לידים</p>'; return; }
+  function card(lead) {
+    return '<article class="card"><h3>' + esc(lead.name) + '</h3><p>' + esc(lead.city || 'בלי עיר') + ' · ' + esc(lead.phone || '') + '</p><p>רבנית: ' + esc(lead.rabbanit ? (rabbanitName(lead.rabbanit) || lead.rabbanitName || 'רבנית') : 'ליד כללי') + '</p><p>סוגרת: ' + esc(personName(lead.closerId) || '-') + '</p><p><span class="badge ' + (lead.status === 'closed' ? 'ok' : 'no') + '">' + (lead.status === 'closed' ? 'נסגר' : 'לא נסגר') + '</span></p><div class="row"><button type="button" class="btn" data-edit-lead="' + esc(lead.id) + '">עריכה</button>' + (isAdmin() ? '<button type="button" class="btn" style="background:#dc2626;" data-del-lead="' + esc(lead.id) + '">מחיקה</button>' : '') + '</div></article>';
   }
-}
-
-function renderReports() {
-  const totalAdCost = leads.reduce((s,l) => s + (+l.cost||0), 0);
-  const totalEventCost = leads.reduce((s,l) => s + (+l.eventCost||0), 0);
-  const totalCost = totalAdCost + totalEventCost;
-  const oneTimeIncome = leads.reduce((s,l) => s + (+l.oneTime||0), 0);
-  
-  // Calculate months active for standing orders
-  let standingIncome = 0;
-  leads.filter(l => l.orderStatus === 'active' && l.orderStart).forEach(l => {
-    const start = new Date(l.orderStart);
-    const months = Math.max(1, Math.round((new Date() - start) / (30*24*60*60*1000)));
-    standingIncome += (+l.monthlyAmount||0) * months;
-  });
-  // Also add active orders without start date (assume 1 month)
-  leads.filter(l => l.orderStatus === 'active' && !l.orderStart).forEach(l => {
-    standingIncome += (+l.monthlyAmount||0);
-  });
-
-  const totalIncome = standingIncome + oneTimeIncome;
-  const net = totalIncome - totalCost;
-  const roi = totalCost > 0 ? (net / totalCost * 100).toFixed(0) : 0;
-
-  document.getElementById('roiBox').innerHTML = `
-    <h3>דוח ROI מדויק</h3>
-    <p>עלות פרסום: <strong>₪${totalAdCost.toFixed(0)}</strong></p>
-    <p>עלות קיום חוגים: <strong>₪${totalEventCost.toFixed(0)}</strong></p>
-    <p>סה"כ עלויות: <strong>₪${totalCost.toFixed(0)}</strong></p>
-    <hr>
-    <p>הכנסה מהוראות קבע (עד היום): <strong>₪${standingIncome.toFixed(0)}</strong></p>
-    <p>תרומות חד-פעמיות: <strong>₪${oneTimeIncome.toFixed(0)}</strong></p>
-    <p>סה"כ הכנסות: <strong>₪${totalIncome.toFixed(0)}</strong></p>
-    <hr>
-    <p>רווח נקי: <strong>₪${net.toFixed(0)}</strong></p>
-    <p>ROI: <strong>${roi}%</strong></p>
-  `;
-  const by = {};
-  leads.forEach(l => {
-    const r = l.rabbanit || 'ללא שיוך';
-    if (!by[r]) by[r] = {leads:0, closed:0, active:0, income:0};
-    by[r].leads++;
-    if (l.status === 'closed') by[r].closed++;
-    if (l.orderStatus === 'active') { by[r].active++; by[r].income += (+l.monthlyAmount||0); }
-  });
-  let html = '';
-  for (const [name, d] of Object.entries(by)) {
-    html += `<div class="report-card"><h3>${name}</h3><p>לידים: ${d.leads} | חוגים: ${d.closed} | הוראות קבע פעילות: ${d.active} | הכנסה חודשית: ₪${d.income.toFixed(0)}</p></div>`;
+  if (groupLeads && isAdmin()) {
+    var groups = {};
+    rows.forEach(function (lead) {
+      var key = lead.closerId || 'none';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(lead);
+    });
+    host.innerHTML = Object.keys(groups).map(function (key) {
+      return '<h3 class="group-title">' + esc(key === 'none' ? 'בלי סוגרת' : personName(key)) + '</h3>' + groups[key].map(card).join('');
+    }).join('');
+    return;
   }
-  document.getElementById('reportsContainer').innerHTML = html || '<p>אין נתונים</p>';
-  
-  // Conversion stats by source
-  const bySource = {};
-  leads.forEach(l => {
-    const s = l.source || 'אחר';
-    if (!bySource[s]) bySource[s] = { total: 0, closed: 0 };
-    bySource[s].total++;
-    if (l.status === 'closed') bySource[s].closed++;
-  });
-  let sourceHtml = '<h3 style="margin-top:1.5rem;">דוח לפי מקור</h3>';
-  for (const [name, d] of Object.entries(bySource)) {
-    const rate = d.total ? Math.round(d.closed / d.total * 100) : 0;
-    sourceHtml += `<div class="report-card"><strong>${name}</strong>: ${d.total} לידים | ${d.closed} חוגים | המרה: ${rate}%</div>`;
-  }
-  
-  // Average standing orders per closed event
-  const closedLeads = leads.filter(l => l.status === 'closed');
-  const avgOrders = closedLeads.length ? (closedLeads.reduce((s,l) => s + (+l.standingOrders||0), 0) / closedLeads.length).toFixed(1) : 0;
-  sourceHtml += `<div class="report-card" style="margin-top:1rem;"><strong>ממוצע הוראות קבע לחוג שנסגר:</strong> ${avgOrders}</div>`;
-  
-  document.getElementById('reportsContainer').innerHTML += sourceHtml;
+  host.innerHTML = rows.map(card).join('');
 }
-
-function generateWeeklyReport() {
-  const text = `דוח שבועי זוהר CRM\nתאריך: ${new Date().toLocaleDateString('he-IL')}\nסה"כ לידים: ${leads.length}\nחוגים שנסגרו: ${leads.filter(l=>l.status==='closed').length}\nהוראות קבע פעילות: ${leads.filter(l=>l.orderStatus==='active').length}`;
-  document.getElementById('weeklyReport').textContent = text;
-  navigator.clipboard.writeText(text).then(() => alert('הועתק ללוח!'));
-}
-
-function openLeadModal(id) {
-  document.getElementById('leadModal').classList.add('active');
-  // Hide financial fields for non-admin
-  const financialFields = ['leadCost', 'leadMonthlyAmount', 'leadOneTime', 'leadEventCost', 'leadOrderStart'];
-  financialFields.forEach(fid => {
-    const el = document.getElementById(fid);
-    if (el) {
-      const group = el.closest('.form-group');
-      if (group) group.style.display = isAdmin() ? '' : 'none';
-    }
-  });
-  const historyBox = document.getElementById('historyBox');
-  if (id) {
-    const l = leads.find(x => x.id === id);
-    document.getElementById('leadId').value = l.id;
-    document.getElementById('leadName').value = l.name;
-    document.getElementById('leadPhone').value = l.phone||'';
-    document.getElementById('leadEmail').value = l.email||'';
-    document.getElementById('leadSource').value = l.source||'';
-    document.getElementById('leadCost').value = l.cost||0;
-    document.getElementById('leadStatus').value = l.status||'open';
-    document.getElementById('leadOrders').value = l.standingOrders||0;
-    document.getElementById('leadCash').value = l.cash||0;
-    document.getElementById('leadOrderStatus').value = l.orderStatus||'';
-    document.getElementById('leadMonthlyAmount').value = l.monthlyAmount||0;
-    document.getElementById('leadRabbanit').value = l.rabbanit||'';
-    document.getElementById('leadEventDate').value = l.eventDate||'';
-    document.getElementById('leadNotes').value = l.notes||'';
-    document.getElementById('leadModalTitle').textContent = 'עריכת ליד';
-    historyBox.innerHTML = (l.history||[]).map(h => `<div>${h.date} – ${h.user}: ${h.change}</div>`).join('') || 'אין היסטוריה';
-  } else {
-    document.querySelector('#leadModal form').reset();
-    document.getElementById('leadId').value = '';
-    document.getElementById('leadModalTitle').textContent = 'ליד חדש';
-    historyBox.innerHTML = '';
-  }
-}
-function closeLeadModal() { document.getElementById('leadModal').classList.remove('active'); }
-
-function saveLead(e) {
-  e.preventDefault();
-  const id = document.getElementById('leadId').value;
-  const old = id ? leads.find(l => l.id === id) : null;
-  const lead = {
-    id: id || Date.now().toString(),
-    name: document.getElementById('leadName').value,
-    phone: document.getElementById('leadPhone').value,
-    email: document.getElementById('leadEmail').value,
-    source: document.getElementById('leadSource').value,
-    cost: +document.getElementById('leadCost').value || 0,
-    status: document.getElementById('leadStatus').value,
-    standingOrders: +document.getElementById('leadOrders').value || 0,
-    cash: +document.getElementById('leadCash').value || 0,
-    orderStatus: document.getElementById('leadOrderStatus').value,
-    monthlyAmount: +document.getElementById('leadMonthlyAmount').value || 0,
-    orderStart: document.getElementById('leadOrderStart').value,
-    oneTime: +document.getElementById('leadOneTime').value || 0,
-    eventCost: +document.getElementById('leadEventCost').value || 0,
-    rabbanit: document.getElementById('leadRabbanit').value,
-    eventDate: document.getElementById('leadEventDate').value,
-    notes: document.getElementById('leadNotes').value,
-    createdAt: old ? old.createdAt : new Date().toISOString(),
-    history: old ? [...(old.history||[])] : []
-  };
-  if (old && old.status !== lead.status) {
-    lead.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name||'מערכת', change: `סטטוס: ${old.status} → ${lead.status}` });
-  }
-  if (id) {
-    const i = leads.findIndex(l => l.id === id);
-    if (i >= 0) leads[i] = lead;
-  } else leads.unshift(lead);
-  saveLeads();
+function showMyLeads() {
+  if (!isAdmin()) return;
+  document.getElementById('filterCloser').value = 'mine';
   renderLeads();
-  closeLeadModal();
 }
-
-function editLead(id) { openLeadModal(id); }
-
-function copyLead(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  navigator.clipboard.writeText(l.name + '\n' + (l.phone||'')).then(() => alert('הועתק!'));
+function toggleGroupLeads() { groupLeads = !groupLeads; renderLeads(); }
+function renderClosings() {
+  fillCloserFilters();
+  var closer = isAdmin() ? document.getElementById('filterClosingCloser').value : (mineClosings ? 'mine' : '');
+  var rabbanit = (isAdmin() || isCallCenter()) ? document.getElementById('filterClosingRabbanit').value : '';
+  var mineBtn = document.getElementById('myClosingsBtn');
+  if (mineBtn) mineBtn.textContent = (isAdmin() ? closer === 'mine' : mineClosings) ? 'כל הסגירות' : 'הסגירות שלי';
+  var rows = classes.filter(function (item) {
+    if (!closerMatch(item.closerId, closer)) return false;
+    if (rabbanit && item.rabbanit !== rabbanit) return false;
+    return true;
+  });
+  document.getElementById('closingCards').innerHTML = rows.map(function (item) {
+    return '<article class="card"><h3>' + esc(addressOf(item) || item.city || 'חוג בית') + '</h3><p>' + esc(item.phone || '') + ' · ' + esc(item.rabbanit ? (rabbanitName(item.rabbanit) || item.rabbanitName) : 'בלי רבנית') + '</p><p>נסגר: ' + esc(item.closedOn || '-') + '</p><p>אירוע: ' + esc(formatWhen(item.eventAt) || '-') + '</p><p>סוגרת: ' + esc(personName(item.closerId) || '-') + '</p><div class="row"><button type="button" class="btn" data-edit-closing="' + esc(item.id) + '">עריכה</button>' + (isAdmin() ? '<button type="button" class="btn" style="background:#dc2626;" data-del-closing="' + esc(item.id) + '">מחיקה</button>' : '') + '</div></article>';
+  }).join('') || '<p>אין סגירות</p>';
 }
-
-function quickNote(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  const note = prompt('הערה מהירה:', l.notes || '');
-  if (note !== null) {
-    l.notes = note;
-    if (!l.history) l.history = [];
-    l.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: 'הערה עודכנה' });
-    saveLeads();
-    renderLeads();
+function showMyClosings() {
+  if (isAdmin()) {
+    var select = document.getElementById('filterClosingCloser');
+    select.value = select.value === 'mine' ? '' : 'mine';
+  } else {
+    mineClosings = !mineClosings;
   }
+  renderClosings();
 }
-
-function loadTemplate() {
-  const key = document.getElementById('templateSelect')?.value || 'invite';
-  const ta = document.getElementById('waTemplate');
-  if (ta) ta.value = TEMPLATES[key] || '';
+function renderEvents() {
+  document.getElementById('eventCards').innerHTML = events.map(function (item) {
+    var missed = item.status === 'did_not_happen';
+    return '<article class="card"><h3>' + esc(addressOf(item) || 'אירוע') + '</h3><p>' + esc(formatWhen(item.eventAt) || 'בלי מועד') + ' · ' + esc(item.phone || '') + '</p><p>רבנית: ' + esc(item.rabbanit ? (rabbanitName(item.rabbanit) || item.rabbanitName || 'רבנית') : '-') + '</p><p>מתרים: ' + esc(item.fundraiser || '-') + ' · הוראות קבע: ' + esc(item.standingOrders || 0) + ' · מזומן: ₪' + esc(Math.round(item.cash || 0)) + '</p>' + (isAdmin() ? '<p>פעיל: ' + esc(personName(item.activistId) || '-') + '</p>' : '') + '<p><span class="badge ' + (missed ? 'no' : 'ok') + '">' + (missed ? 'לא התקיים' : 'התקיים') + '</span></p><div class="row"><button type="button" class="btn" data-edit-event="' + esc(item.id) + '">עריכה</button>' + (isAdmin() ? '<button type="button" class="btn" style="background:#dc2626;" data-del-event="' + esc(item.id) + '">מחיקה</button>' : '') + '</div></article>';
+  }).join('') || '<p>אין אירועים</p>';
 }
-
-function sendWA(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  const tpl = document.getElementById('waTemplate')?.value || TEMPLATES.invite;
-  const msg = tpl.replace(/{name}/g, l.name).replace(/{rabbanit}/g, l.rabbanit||'').replace(/{date}/g, l.eventDate||'');
-  const phone = (l.phone||'').replace(/\D/g,'').replace(/^0/,'972');
-  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+function openLeadModal(id) {
+  var lead = id ? leads.find(function (item) { return item.id === id; }) : null;
+  document.getElementById('leadForm').reset();
+  document.getElementById('leadModalTitle').textContent = lead ? 'עריכת ליד' : 'ליד חדש';
+  setVal('leadId', lead ? lead.id : '');
+  setVal('leadName', lead ? lead.name : '');
+  setVal('leadCity', lead ? lead.city : '');
+  setVal('leadPhone', lead ? lead.phone : '');
+  setVal('leadStatus', lead ? lead.status : 'not_closed');
+  setVal('leadNotes', lead ? lead.notes : '');
+  fillRabbanitSelect(document.getElementById('leadRabbanit'), lead ? lead.rabbanit : '', true);
+  document.getElementById('leadRabbanit').disabled = isRabbanit();
+  fillPeopleSelect(document.getElementById('leadCloser'), lead ? lead.closerId : (currentUser && currentUser.id), 'ברירת מחדל (אני)');
+  var text = document.getElementById('leadCloserText');
+  text.classList.toggle('hidden', isAdmin());
+  text.textContent = 'סוגרת: ' + (lead ? (personName(lead.closerId) || '-') : (currentUser.name || ''));
+  document.getElementById('leadModal').classList.add('active');
 }
-
-function sendWAToOpen() {
-  const rabbanitFilter = document.getElementById('waRabbanitFilter')?.value || '';
-  let targets = leads.filter(l => l.status === 'open');
-  if (rabbanitFilter) targets = targets.filter(l => l.rabbanit === rabbanitFilter);
-  if (!targets.length) return alert('אין לידים מתאימים');
-  if (confirm('לפתוח וואטסאפ ל-' + targets.length + ' לידים?')) {
-    targets.forEach((l,i) => setTimeout(() => sendWA(l.id), i*700));
-  }
-}
-
-function exportCSV() {
-  const rows = [['שם','טלפון','מקור','עלות','סטטוס','הוראות קבע','סטטוס קבע','סכום חודשי','רבנית','תאריך חוג']];
-  leads.forEach(l => rows.push([l.name, l.phone, l.source, l.cost, l.status, l.standingOrders, l.orderStatus, l.monthlyAmount, l.rabbanit, l.eventDate||'']));
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF'+rows.map(r=>r.join(',')).join('\n')], {type:'text/csv'}));
-  a.download = 'zohar-leads.csv';
-  a.click();
-}
-
-function openSheetsModal() { document.getElementById('sheetsModal').classList.add('active'); }
-
-async function syncSheets() {
-  const url = document.getElementById('sheetsUrl').value.trim();
-  if (!url) return alert('הכנס קישור');
-  const status = document.getElementById('syncStatus');
-  status.textContent = 'מסנכרן...';
+function onSaveLead(e) { e.preventDefault(); saveLeadForm(); return false; }
+async function saveLeadForm() {
   try {
-    let csvUrl = url;
-    const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-    if (m) csvUrl = 'https://docs.google.com/spreadsheets/d/' + m[1] + '/export?format=csv';
-    const res = await fetch(csvUrl);
-    const text = await res.text();
-    const lines = text.split('\n');
-    let added = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      if (!cols[0]) continue;
-      const phone = (cols[1]||'').trim();
-      if (phone && leads.some(l => l.phone === phone)) continue;
-      const campaign = (cols[3] || '').toLowerCase();
-      let rabbanit = '';
-      if (campaign.includes('שרה')) rabbanit = 'שרה';
-      else if (campaign.includes('רבקה')) rabbanit = 'רבקה';
-      else if (campaign.includes('לאה')) rabbanit = 'לאה';
-      leads.unshift({ id: 's'+Date.now()+i, name: cols[0].trim(), phone, email: cols[2]||'', source: cols[3]||'Facebook', cost: 0, status: 'open', standingOrders: 0, orderStatus: '', monthlyAmount: 0, rabbanit, eventDate: '', notes: 'יובא', createdAt: new Date().toISOString(), history: [] });
-      added++;
-    }
-    saveLeads(); renderLeads();
-    status.innerHTML = '<span style="color:green;">נוספו '+added+' לידים</span>';
-    setTimeout(() => document.getElementById('sheetsModal').classList.remove('active'), 1200);
-  } catch(e) { status.innerHTML = '<span style="color:red;">'+e.message+'</span>'; }
+    await ZoharData.saveLead({
+      id: val('leadId') || undefined,
+      name: val('leadName'), city: val('leadCity'), phone: val('leadPhone'),
+      rabbanit: val('leadRabbanit'), closerId: val('leadCloser'),
+      status: val('leadStatus'), notes: val('leadNotes')
+    });
+    await reloadData(); closeModal('leadModal'); renderLeads();
+  } catch (err) { alert(err.message || 'השמירה נכשלה'); }
 }
-
+function openClosingModal(id) {
+  var item = id ? classes.find(function (row) { return row.id === id; }) : null;
+  document.getElementById('closingForm').reset();
+  document.getElementById('closingModalTitle').textContent = item ? 'עריכת סגירה' : 'סגירת חוג בית';
+  var leadSelect = document.getElementById('closingLead');
+  leadSelect.innerHTML = '<option value="">בלי ליד</option>' + leads.map(function (lead) {
+    return '<option value="' + esc(lead.id) + '">' + esc(lead.name) + ' · ' + esc(lead.phone || '') + '</option>';
+  }).join('');
+  setVal('closingId', item ? item.id : '');
+  setVal('closingLead', item ? item.leadId : '');
+  setVal('closingCity', item ? item.city : '');
+  setVal('closingStreet', item ? item.street : '');
+  setVal('closingHouse', item ? item.houseNumber : '');
+  setVal('closingPhone', item ? item.phone : '');
+  setVal('closingClosedOn', item && item.closedOn ? item.closedOn : today());
+  setVal('closingEventAt', item ? toLocalInput(item.eventAt) : '');
+  fillRabbanitSelect(document.getElementById('closingRabbanit'), item ? item.rabbanit : '', true);
+  document.getElementById('closingRabbanit').disabled = isRabbanit();
+  fillPeopleSelect(document.getElementById('closingCloser'), item ? item.closerId : '', 'ברירת מחדל (אני)');
+  var text = document.getElementById('closingCloserText');
+  text.classList.toggle('hidden', isAdmin());
+  text.textContent = 'סוגרת: ' + (item ? personName(item.closerId) : (currentUser.name || ''));
+  document.getElementById('closingModal').classList.add('active');
+}
+document.getElementById('closingLead').addEventListener('change', function () {
+  var lead = leads.find(function (item) { return item.id === document.getElementById('closingLead').value; });
+  if (!lead) return;
+  if (!val('closingCity')) setVal('closingCity', lead.city);
+  if (!val('closingPhone')) setVal('closingPhone', lead.phone);
+  if (!isRabbanit() && lead.rabbanit) setVal('closingRabbanit', lead.rabbanit);
+});
+function onSaveClosing(e) { e.preventDefault(); saveClosingForm(); return false; }
+async function saveClosingForm() {
+  try {
+    await ZoharData.saveHomeClass({
+      id: val('closingId') || undefined,
+      leadId: val('closingLead'),
+      city: val('closingCity'), street: val('closingStreet'), houseNumber: val('closingHouse'),
+      phone: val('closingPhone'), rabbanit: val('closingRabbanit'),
+      closedOn: val('closingClosedOn'), eventAt: val('closingEventAt'),
+      closerId: val('closingCloser')
+    });
+    await reloadData(); closeModal('closingModal'); renderClosings();
+  } catch (err) { alert(err.message || 'השמירה נכשלה'); }
+}
+function openEventModal(id) {
+  var item = id ? events.find(function (row) { return row.id === id; }) : null;
+  document.getElementById('eventForm').reset();
+  document.getElementById('eventModalTitle').textContent = item ? 'עריכת אירוע' : 'אירוע חדש';
+  setVal('eventId', item ? item.id : '');
+  setVal('eventHomeClass', item ? item.homeClassId : '');
+  var manual = isAdmin() && !(item && item.homeClassId);
+  document.getElementById('eventManualFields').classList.toggle('hidden', !manual);
+  document.getElementById('eventSynced').textContent = item && item.homeClassId
+    ? (addressOf(item) + ' · ' + (formatWhen(item.eventAt) || '') + ' · ' + (item.phone || ''))
+    : (item ? '' : 'אירוע ידני, בלי חוג בית');
+  setVal('eventCity', item ? item.city : '');
+  setVal('eventStreet', item ? item.street : '');
+  setVal('eventHouse', item ? item.houseNumber : '');
+  setVal('eventPhone', item ? item.phone : '');
+  setVal('eventAt', item ? toLocalInput(item.eventAt) : '');
+  fillRabbanitSelect(document.getElementById('eventRabbanit'), item ? item.rabbanit : '', true);
+  setVal('eventFundraiser', item ? item.fundraiser : '');
+  setVal('eventOrders', item ? item.standingOrders : 0);
+  setVal('eventCash', item ? item.cash : 0);
+  document.getElementById('eventDidNot').checked = !!(item && item.status === 'did_not_happen');
+  var activists = users.filter(function (person) { return person.role === 'activist'; });
+  document.getElementById('eventActivist').innerHTML = '<option value="">בלי פעיל</option>' + activists.map(function (person) {
+    return '<option value="' + esc(person.id) + '">' + esc(person.name || person.username) + '</option>';
+  }).join('');
+  setVal('eventActivist', item ? item.activistId : '');
+  setVal('eventCost', item ? item.cost : 0);
+  setVal('eventEventCost', item ? item.eventCost : 0);
+  setVal('eventOneTime', item ? item.oneTime : 0);
+  setVal('eventMonthly', item ? item.monthlyAmount : 0);
+  setVal('eventOrderStart', item ? item.orderStart : '');
+  document.getElementById('eventModal').classList.add('active');
+}
+function onSaveEvent(e) { e.preventDefault(); saveEventForm(); return false; }
+async function saveEventForm() {
+  try {
+    await ZoharData.saveEvent({
+      id: val('eventId') || undefined,
+      homeClassId: val('eventHomeClass'),
+      city: val('eventCity'), street: val('eventStreet'), houseNumber: val('eventHouse'),
+      phone: val('eventPhone'), eventAt: val('eventAt'),
+      rabbanit: val('eventRabbanit'), fundraiser: val('eventFundraiser'),
+      standingOrders: val('eventOrders'), cash: val('eventCash'),
+      didNotHappen: document.getElementById('eventDidNot').checked,
+      activistId: val('eventActivist'),
+      cost: val('eventCost'), eventCost: val('eventEventCost'),
+      oneTime: val('eventOneTime'), monthlyAmount: val('eventMonthly'),
+      orderStart: val('eventOrderStart')
+    });
+    await reloadData(); closeModal('eventModal'); renderEvents();
+  } catch (err) { alert(err.message || 'השמירה נכשלה'); }
+}
+function renderRabbaniyot() {
+  document.getElementById('rabbaniyotList').innerHTML = rabbaniyot.map(function (row) {
+    return '<tr><td>' + esc(row.name) + '</td><td>' + (row.active === false ? 'מושבת' : 'פעילה') + '</td><td>' + (row.profileId ? 'משויכת' : 'לא') + '</td><td><button type="button" class="btn" data-edit-rabbaniya="' + esc(row.id) + '">עריכה</button> <button type="button" class="btn" style="background:#dc2626;" data-del-rabbaniya="' + esc(row.id) + '">מחק</button></td></tr>';
+  }).join('') || '<tr><td colspan="4">אין רבניות</td></tr>';
+}
+function openRabbaniyaModal(id) {
+  var row = id ? rabbaniyot.find(function (item) { return item.id === id; }) : null;
+  document.getElementById('rabbaniyaForm').reset();
+  setVal('rabbaniyaId', row ? row.id : '');
+  setVal('rabbaniyaName', row ? row.name : '');
+  document.getElementById('rabbaniyaActive').checked = row ? row.active !== false : true;
+  document.getElementById('rabbaniyaModalTitle').textContent = row ? 'עריכת רבנית' : 'רבנית חדשה';
+  document.getElementById('rabbaniyaModal').classList.add('active');
+}
+function onSaveRabbaniya(e) { e.preventDefault(); saveRabbaniyaForm(); return false; }
+async function saveRabbaniyaForm() {
+  var id = val('rabbaniyaId');
+  try {
+    await ZoharData.saveRabbaniya({ id: id || undefined, name: val('rabbaniyaName'), active: document.getElementById('rabbaniyaActive').checked, create: !id });
+    await reloadData(); closeModal('rabbaniyaModal'); renderRabbaniyot();
+  } catch (err) { alert(err.message || 'השמירה נכשלה'); }
+}
 function renderUsers() {
-  document.getElementById('usersList').innerHTML = Object.entries(users).map(([key, u]) => `
-    <tr>
-      <td>${key}</td>
-      <td>${u.name}</td>
-      <td>${u.rabbanit||'-'}</td>
-      <td>${u.role === 'admin' ? 'מנהל' : (u.role === 'operator' ? 'פעיל' : 'רבנית')}</td>
-      <td>
-        ${key !== 'מנהל' ? `
-          <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="editUser('${key}')">עריכה</button>
-          <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" onclick="deleteUser('${key}')">מחק</button>
-        ` : 'מנהל ראשי'}
-      </td>
-    </tr>
-  `).join('');
-  // Fill WA rabbanit filter
-  const waSelect = document.getElementById('waRabbanitFilter');
-  if (waSelect) {
-    const names = [...new Set(Object.values(users).map(u => u.rabbanit).filter(Boolean))];
-    waSelect.innerHTML = '<option value="">כל הרבניות / כל החוגים</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
-  }
+  document.getElementById('usersList').innerHTML = users.map(function (user) {
+    var linked = rabbaniyot.find(function (row) { return row.id === user.rabbaniyaId; });
+    var self = currentUser && user.id === currentUser.id;
+    return '<tr><td>' + esc(user.username) + '</td><td>' + esc(user.name) + '</td><td>' + esc(roleLabel(user.role)) + '</td><td>' + esc(user.role === 'rabbanit' ? ((linked && linked.name) || '-') : '-') + '</td><td>' + (user.active === false ? 'מושבת' : 'פעיל') + '</td><td><button type="button" class="btn" data-edit-user="' + esc(user.id) + '">עריכה</button>' + (self ? '' : ' <button type="button" class="btn" style="background:#dc2626;" data-del-user="' + esc(user.id) + '">מחק</button>') + '</td></tr>';
+  }).join('');
 }
-
-function editUser(key) {
-  const u = users[key];
-  if (!u) return;
-  document.getElementById('userModal').classList.add('active');
-  document.querySelector('#userModal h3').textContent = 'עריכת משתמש';
-  document.getElementById('newUsername').value = key;
-  document.getElementById('newUsername').disabled = true;
-  document.getElementById('newPassword').value = u.pass;
-  document.getElementById('newDisplayName').value = u.name;
-  document.getElementById('newRabbanit').value = u.rabbanit || '';
-  document.getElementById('userModal').dataset.editKey = key;
+function fillUserRabbaniya(selected) {
+  var html = '<option value="">בחרו רבנית</option>';
+  rabbaniyot.forEach(function (row) {
+    if (row.active === false && row.id !== selected) return;
+    html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.profileId && row.id !== selected ? ' (משויכת)' : '') + '</option>';
+  });
+  var select = document.getElementById('newRabbaniyaId');
+  select.innerHTML = html;
+  select.value = selected || '';
 }
-
+function toggleRabbanitPick() {
+  var show = document.getElementById('newRole').value === 'rabbanit';
+  document.getElementById('rabbanitPick').style.display = show ? '' : 'none';
+  document.getElementById('newRabbaniyaId').required = show;
+}
 function openAddUser() {
+  document.getElementById('userForm').reset();
+  document.getElementById('userModal').dataset.userId = '';
+  document.getElementById('userModalTitle').textContent = 'משתמש חדש';
+  document.getElementById('newPassword').required = true;
+  document.getElementById('newUserActive').checked = true;
+  fillUserRabbaniya('');
+  toggleRabbanitPick();
   document.getElementById('userModal').classList.add('active');
-  document.querySelector('#userModal h3').textContent = 'הוספת משתמש';
-  document.getElementById('newUsername').disabled = false;
-  document.querySelector('#userModal form').reset();
-  delete document.getElementById('userModal').dataset.editKey;
 }
-
-function closeUserModal() { 
-  document.getElementById('userModal').classList.remove('active'); 
-  document.getElementById('newUsername').disabled = false;
+function openEditUser(id) {
+  var user = users.find(function (item) { return item.id === id; });
+  if (!user) return;
+  document.getElementById('userForm').reset();
+  document.getElementById('userModal').dataset.userId = user.id;
+  document.getElementById('userModalTitle').textContent = 'עריכת משתמש';
+  setVal('newUsername', user.username);
+  setVal('newDisplayName', user.name);
+  setVal('newRole', user.role || 'activist');
+  document.getElementById('newPassword').required = false;
+  document.getElementById('newUserActive').checked = user.active !== false;
+  fillUserRabbaniya(user.rabbaniyaId || '');
+  toggleRabbanitPick();
+  document.getElementById('userModal').classList.add('active');
 }
-
-function saveNewUser(e) {
+function onSaveUser(e) { e.preventDefault(); saveUserForm(); return false; }
+async function saveUserForm() {
+  var id = document.getElementById('userModal').dataset.userId;
+  try {
+    await ZoharData.saveUser({
+      id: id || undefined,
+      create: !id,
+      username: val('newUsername'),
+      password: val('newPassword'),
+      name: val('newDisplayName'),
+      role: val('newRole'),
+      rabbaniyaId: val('newRabbaniyaId'),
+      active: document.getElementById('newUserActive').checked
+    });
+    if (currentUser && id === currentUser.id) {
+      currentUser.name = val('newDisplayName');
+      currentUser.username = val('newUsername').toLowerCase();
+      currentUser.role = val('newRole');
+      document.body.dataset.role = currentUser.role;
+      document.getElementById('userInfo').textContent = 'שלום ' + currentUser.name + ' (' + roleLabel(currentUser.role) + ')';
+    }
+    await reloadData(); closeModal('userModal'); renderUsers();
+  } catch (err) { alert(err.message || 'השמירה נכשלה'); }
+}
+function openOwnPassword() { document.getElementById('passwordModal').classList.add('active'); }
+function onOwnPassword(e) {
   e.preventDefault();
-  const editKey = document.getElementById('userModal').dataset.editKey;
-  const username = document.getElementById('newUsername').value.trim();
-  const password = document.getElementById('newPassword').value;
-  const displayName = document.getElementById('newDisplayName').value.trim();
-  const rabbanit = document.getElementById('newRabbanit').value.trim();
-  if (!username || !password || !displayName) return alert('מלא את השדות החובה');
-  const role = editKey ? users[editKey].role : (rabbanit ? 'rabbanit' : 'operator');
-  if (editKey && editKey !== username) delete users[editKey];
-  users[username] = { pass: password, name: displayName, role: role, rabbanit: rabbanit };
-  localStorage.setItem('zohar_users', JSON.stringify(users));
-  closeUserModal();
-  renderUsers();
-  document.querySelector('#userModal form').reset();
+  var a = val('ownPassword'), b = val('ownPassword2');
+  if (a !== b) { alert('הסיסמאות אינן תואמות'); return false; }
+  ZoharData.changeOwnPassword(a).then(function () { closeModal('passwordModal'); alert('הסיסמה עודכנה'); }).catch(function (err) { alert(err.message || 'השמירה נכשלה'); });
+  return false;
 }
-function deleteUser(key) {
-  if (confirm('למחוק?')) { delete users[key]; localStorage.setItem('zohar_users', JSON.stringify(users)); renderUsers(); }
+function onLogin(e) {
+  e.preventDefault();
+  doLogin();
+  return false;
 }
-loadTemplate();
+async function doLogin() {
+  await appReady;
+  if (initError) { alert(initError.message || 'שגיאה בטעינת הנתונים'); return; }
+  try {
+    var user = await ZoharData.login(val('loginUser'), document.getElementById('loginPass').value);
+    await enterApp(user);
+    await maybeOfferBiometric(user);
+  } catch (err) { alert(err.message || 'שגיאה בכניסה'); }
+}
+async function doLogout() {
+  var id = currentUser && currentUser.id;
+  await ZoharData.logout();
+  if (id) ZoharBiometric.clear(id);
+  currentUser = null;
+  lockedUser = null;
+  leads = []; classes = []; events = []; users = []; rabbaniyot = [];
+  document.body.dataset.role = '';
+  closeModal('settingsModal');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('lockScreen').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginPass').value = '';
+}
+document.getElementById('bottomNav').addEventListener('click', function (e) {
+  var btn = e.target.closest('button');
+  if (!btn) return;
+  showTab(btn.getAttribute('data-tab'));
+});
+document.getElementById('leadCards').addEventListener('click', function (e) {
+  var edit = e.target.closest('[data-edit-lead]');
+  var del = e.target.closest('[data-del-lead]');
+  if (edit) openLeadModal(edit.getAttribute('data-edit-lead'));
+  if (del && confirm('למחוק את הליד?')) ZoharData.deleteLead(del.getAttribute('data-del-lead')).then(reloadData).then(renderLeads).catch(function (err) { alert(err.message); });
+});
+document.getElementById('closingCards').addEventListener('click', function (e) {
+  var edit = e.target.closest('[data-edit-closing]');
+  var del = e.target.closest('[data-del-closing]');
+  if (edit) openClosingModal(edit.getAttribute('data-edit-closing'));
+  if (del && confirm('למחוק את הסגירה?')) ZoharData.deleteHomeClass(del.getAttribute('data-del-closing')).then(reloadData).then(renderClosings).catch(function (err) { alert(err.message); });
+});
+document.getElementById('eventCards').addEventListener('click', function (e) {
+  var edit = e.target.closest('[data-edit-event]');
+  var del = e.target.closest('[data-del-event]');
+  if (edit) openEventModal(edit.getAttribute('data-edit-event'));
+  if (del && confirm('למחוק את האירוע?')) ZoharData.deleteEvent(del.getAttribute('data-del-event')).then(reloadData).then(renderEvents).catch(function (err) { alert(err.message); });
+});
+document.getElementById('rabbaniyotList').addEventListener('click', function (e) {
+  var edit = e.target.closest('[data-edit-rabbaniya]');
+  var del = e.target.closest('[data-del-rabbaniya]');
+  if (edit) openRabbaniyaModal(edit.getAttribute('data-edit-rabbaniya'));
+  if (del && confirm('למחוק את הרבנית? לידים משויכים יהפכו ללידים כלליים.')) {
+    ZoharData.deleteRabbaniya(del.getAttribute('data-del-rabbaniya')).then(reloadData).then(renderRabbaniyot).catch(function (err) { alert(err.message); });
+  }
+});
+document.getElementById('usersList').addEventListener('click', function (e) {
+  var edit = e.target.closest('[data-edit-user]');
+  var del = e.target.closest('[data-del-user]');
+  if (edit) openEditUser(edit.getAttribute('data-edit-user'));
+  if (del) {
+    if (currentUser && del.getAttribute('data-del-user') === currentUser.id) { alert('אי אפשר למחוק את המשתמש המחובר'); return; }
+    if (confirm('למחוק את המשתמש?')) ZoharData.deleteUser(del.getAttribute('data-del-user')).then(reloadData).then(renderUsers).catch(function (err) { alert(err.message); });
+  }
+});
+document.getElementById('newRole').addEventListener('change', toggleRabbanitPick);
+ZoharData.onChange(function () {
+  if (!currentUser || document.querySelector('.modal.active')) return;
+  reloadData().then(function () {
+    var active = document.querySelector('#bottomNav button.active');
+    showTab(active ? active.getAttribute('data-tab') : defaultTab());
+  }).catch(function () {});
+});
+document.getElementById('lockBiometric').addEventListener('click', function () { unlockWithBiometric(true); });
+document.getElementById('lockPassword').addEventListener('click', function () { unlockWithPassword(); });
+document.getElementById('bioEnable').addEventListener('click', function () { enableBiometric(); });
+document.getElementById('bioLater').addEventListener('click', function () { closeModal('bioOffer'); });
+document.getElementById('bioToggle').addEventListener('change', function () { onBioToggle(); });
+var appReady = ZoharData.init().then(function () {
+  return resumeSession();
+}).catch(function (err) { initError = err; });
+(function setupInstall() {
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  if (standalone) return;
+  if (ios) {
+    document.getElementById('installBar').classList.remove('hidden');
+    document.getElementById('installIos').classList.remove('hidden');
+  }
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredInstall = e;
+    document.getElementById('installBar').classList.remove('hidden');
+    document.getElementById('installBtn').classList.remove('hidden');
+  });
+  document.getElementById('installBtn').addEventListener('click', function () {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    deferredInstall = null;
+  });
+})();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(function () {});
 </script>
 </body>
 </html>
