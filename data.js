@@ -10,7 +10,8 @@
   var KEY = 'sb_publishable_86lf34rTzykeHtfd-LQCQw_HnlyTwoq';
   var ADMIN_USERS = URL + '/functions/v1/admin-users';
   var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  var USERNAME = /^[a-z0-9._-]{3,32}$/;
+  var ASCII_USERNAME = /^[a-z0-9._-]{3,32}$/;
+  var UNICODE_USERNAME = /^[\p{L}\p{N}._-]{1,32}$/u;
 
   var client = null;
   var profile = null;
@@ -57,8 +58,35 @@
     if (profile && profile.role && profile.role !== 'admin') throw new Error('אין הרשאה לבצע את הפעולה');
   }
 
-  function validUsername(value) {
-    return USERNAME.test(String(value || '').trim().toLowerCase());
+  function normalizeUsername(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  // Same rule as supabase/functions/admin-users/index.ts.
+  // ASCII usernames stay "<name>@zohar.local". Any other allowed name
+  // becomes "u" + lowercase hex of its UTF-8 bytes, because a Hebrew
+  // local-part is not a valid email.
+  function emailLocal(username) {
+    if (ASCII_USERNAME.test(username)) return username;
+    if (!UNICODE_USERNAME.test(username) || !/[^\u0000-\u007F]/.test(username)) return '';
+    var bytes = new TextEncoder().encode(username);
+    if (bytes.length > 31) return '';
+    var hex = '';
+    for (var i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2, '0');
+    return 'u' + hex;
+  }
+
+  function usernameError(value) {
+    var name = normalizeUsername(value);
+    if (!name) return 'הזינו שם משתמש';
+    if (emailLocal(name)) return '';
+    if (/[^\u0000-\u007F]/.test(name) && new TextEncoder().encode(name).length > 31) return 'שם המשתמש ארוך מדי';
+    return 'שם המשתמש יכול להיות בעברית או באנגלית, בלי רווחים. באנגלית: 3–32 תווים (אותיות, מספרים, נקודה, מקף או קו תחתון).';
+  }
+
+  function loginEmail(value) {
+    var local = emailLocal(normalizeUsername(value));
+    return local ? local + '@zohar.local' : '';
   }
 
   function validPassword(value) {
@@ -90,6 +118,7 @@
     var code = String(payload && (payload.error || payload.code || payload.message) || '');
     var messages = {
       username_taken: 'שם המשתמש כבר תפוס',
+      invalid_username: 'שם המשתמש יכול להיות בעברית או באנגלית, בלי רווחים. באנגלית: 3–32 תווים (אותיות, מספרים, נקודה, מקף או קו תחתון).',
       rabbaniya_id_required: 'לא ניתן ליצור את הרבנית. נסו שוב.',
       rabbaniya_name_taken: 'כבר קיימת רבנית בשם הזה',
       rabbaniya_already_linked: 'הרבנית הזו כבר משויכת למשתמש אחר',
@@ -310,10 +339,12 @@
 
   async function login(username, password) {
     await init();
-    var name = String(username || '').trim().toLowerCase();
-    if (!validUsername(name)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
+    var name = normalizeUsername(username);
+    var email = loginEmail(name);
+    var nameError = usernameError(name);
+    if (nameError) throw new Error(nameError);
     if (!password) throw new Error('הזינו סיסמה');
-    var res = await client.auth.signInWithPassword({ email: name + '@zohar.local', password: String(password) });
+    var res = await client.auth.signInWithPassword({ email: email, password: String(password) });
     if (res.error || !res.data || !res.data.user) {
       var code = res.error && (res.error.code || res.error.message || '');
       if (code === 'user_banned' || /user_banned/i.test(String(code))) throw new Error('החשבון הזה מושבת. פנו למנהל.');
@@ -399,13 +430,14 @@
     return enqueue(async function () {
       await init();
       await requireAdmin();
-      var username = String(input && input.username || '').trim().toLowerCase();
+      var username = normalizeUsername(input && input.username);
       var name = String(input && input.name || '').trim();
       var allowed = { admin: true, activist: true, rabbanit: true, call_center: true };
       var role = input && allowed[input.role] ? input.role : '';
       var password = input && input.password ? String(input.password) : '';
       var active = !(input && input.active === false);
-      if (!validUsername(username)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
+      var nameError = usernameError(username);
+      if (nameError) throw new Error(nameError);
       if (!name || !role) throw new Error('מלאו את השדות החובה');
       if (input && input.create) {
         if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
