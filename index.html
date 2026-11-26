@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>לידים</title>
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; }
@@ -15,6 +16,7 @@ body { font-family: 'Heebo', sans-serif; background: #f1f5f9; margin: 0; color: 
 .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; }
 .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.65rem; border: 1px solid #e2e8f0; border-radius: 8px; font-family: inherit; }
 .btn { background: #1e3a8a; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
+a.btn { display: inline-block; text-decoration: none; }
 .btn:hover { background: #1e40af; }
 .btn-wa { background: #25D366; }
 .btn-outline { background: transparent; color: #1e3a8a; border: 1.5px solid #1e3a8a; }
@@ -52,9 +54,11 @@ th { background: #f8fafc; }
     <div style="text-align:center; margin-bottom:1rem;">
       <img src="https://zohar-harashbi.co.il/wp-content/uploads/cropped-%D7%AA%D7%9E%D7%95%D7%A0%D7%94_%D7%A9%D7%9C_WhatsApp__2025-07-30_%D7%91%D7%A9%D7%A2%D7%94_10.04.33_da67cc47-removebg-preview.png" alt="לוגו" style="height:80px;">
     </div>
-    <div class="form-group"><label>שם משתמש</label><input type="text" id="loginUser" placeholder="שם משתמש" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('loginPass').focus();}"></div>
-    <div class="form-group"><label>סיסמה</label><input type="password" id="loginPass" placeholder="סיסמה" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}"></div>
-    <button class="btn" style="width:100%;" onclick="doLogin()">כניסה</button>
+    <form id="loginForm" onsubmit="doLogin(event)">
+      <div class="form-group"><label>שם משתמש</label><input type="text" id="loginUser" placeholder="שם משתמש" autocomplete="username"></div>
+      <div class="form-group"><label>סיסמה</label><input type="password" id="loginPass" placeholder="סיסמה" autocomplete="current-password"></div>
+      <button class="btn" style="width:100%;" type="submit">כניסה</button>
+    </form>
   </div>
 </div>
 
@@ -64,21 +68,21 @@ th { background: #f8fafc; }
       <h1 style="margin:0; font-size:1.3rem;">לידים</h1>
       <small id="userInfo"></small>
     </div>
-    <button class="btn" style="background:transparent; border:1px solid white;" onclick="doLogout()">יציאה</button>
+    <button class="btn" style="background:transparent; border:1px solid white;" type="button" onclick="doLogout()">יציאה</button>
   </div>
   <div class="container">
     <div class="tabs">
-      <button class="tab active" onclick="switchTab('leads')">לידים</button>
-      <button class="tab" onclick="switchTab('reports')">דוחות + ROI</button>
-      <button class="tab" onclick="switchTab('calendar')">לוח שנה</button>
-      <button class="tab" onclick="switchTab('whatsapp')">וואטסאפ</button>
-      <button class="tab" onclick="switchTab('users')">ניהול משתמשים</button>
+      <button type="button" class="tab active" data-tab="leads" onclick="switchTab('leads', event)">לידים</button>
+      <button type="button" class="tab" data-tab="reports" onclick="switchTab('reports', event)">דוחות + ROI</button>
+      <button type="button" class="tab" data-tab="calendar" onclick="switchTab('calendar', event)">לוח שנה</button>
+      <button type="button" class="tab" data-tab="whatsapp" onclick="switchTab('whatsapp', event)">וואטסאפ</button>
+      <button type="button" class="tab" data-tab="users" onclick="switchTab('users', event)">ניהול משתמשים</button>
     </div>
 
     <div id="panel-leads">
       <div class="stats" id="stats"></div>
       <div class="toolbar">
-        <button class="btn" onclick="openLeadModal()">+ הוסף ליד חדש</button>
+        <button class="btn" type="button" onclick="openLeadModal()">+ הוסף ליד חדש</button>
         <input type="text" id="search" placeholder="חיפוש..." oninput="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
         <select id="filterStatus" onchange="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
           <option value="">כל הסטטוסים</option>
@@ -90,8 +94,10 @@ th { background: #f8fafc; }
         <select id="filterRabbanit" onchange="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
           <option value="">כל הרבניות</option>
         </select>
-        <button class="btn" style="background:#0f766e;" onclick="openSheetsModal()">סנכרון גוגל שיטס</button>
-        <button class="btn btn-outline" onclick="exportCSV()">ייצוא</button>
+        <button class="btn" type="button" style="background:#0f766e;" onclick="openSheetsModal()">סנכרון גוגל שיטס</button>
+        <button class="btn btn-outline" type="button" onclick="document.getElementById('csvFile').click()">ייבוא CSV</button>
+        <input id="csvFile" class="hidden" type="file" accept=".csv,text/csv" onchange="importCSVFile(this)">
+        <button class="btn btn-outline" type="button" onclick="exportCSV()">ייצוא</button>
       </div>
       <table>
         <thead>
@@ -105,7 +111,7 @@ th { background: #f8fafc; }
       <h2>דוחות + ROI</h2>
       <div id="roiBox" class="report-card"></div>
       <div id="reportsContainer"></div>
-      <button class="btn" style="margin-top:1rem;" onclick="generateWeeklyReport()">צור דוח שבועי</button>
+      <button class="btn" type="button" style="margin-top:1rem;" onclick="generateWeeklyReport()">צור דוח שבועי</button>
       <div id="weeklyReport" style="margin-top:1rem; background:white; padding:1rem; border-radius:10px; white-space:pre-wrap;"></div>
     </div>
 
@@ -125,17 +131,18 @@ th { background: #f8fafc; }
         <select id="waRabbanitFilter" style="margin-bottom:0.5rem; padding:0.5rem; width:100%;">
           <option value="">כל הרבניות / כל החוגים</option>
         </select>
-        <textarea id="waTemplate" rows="6" style="width:100%;"></textarea>
+        <textarea id="waTemplate" rows="6" style="width:100%;" oninput="clearWaQueue()"></textarea>
         <p style="font-size:0.85rem; color:#64748b;">משתנים: {name}, {rabbanit}, {date}</p>
-        <button class="btn btn-wa" onclick="sendWAToOpen()">שלח לפי בחירה</button>
+        <button class="btn btn-wa" type="button" onclick="sendWAToOpen()">שלח לפי בחירה</button>
+        <div id="waQueue" style="margin-top:0.8rem;"></div>
       </div>
     </div>
 
     <div id="panel-users" class="hidden">
       <h2>ניהול משתמשים</h2>
-      <div class="toolbar"><button class="btn" onclick="openAddUser()">+ הוסף משתמש</button></div>
+      <div class="toolbar"><button class="btn" type="button" onclick="openAddUser()">+ הוסף משתמש</button></div>
       <table>
-        <thead><tr><th>שם משתמש</th><th>שם</th><th>שיוך</th><th>פעולות</th></tr></thead>
+        <thead><tr><th>שם משתמש</th><th>שם</th><th>שיוך</th><th>תפקיד</th><th>פעולות</th></tr></thead>
         <tbody id="usersList"></tbody>
       </table>
     </div>
@@ -189,10 +196,10 @@ th { background: #f8fafc; }
   <div class="modal-content">
     <h3>הוספת רבנית</h3>
     <form onsubmit="saveNewUser(event)">
-      <div class="form-group"><label>שם משתמש</label><input id="newUsername" required></div>
-      <div class="form-group"><label>סיסמה</label><input id="newPassword" required></div>
+      <div class="form-group"><label>שם משתמש</label><input id="newUsername" autocomplete="off" required></div>
+      <div class="form-group"><label>סיסמה</label><input id="newPassword" type="password" autocomplete="new-password"></div>
       <div class="form-group"><label>שם להצגה</label><input id="newDisplayName" required></div>
-      <div class="form-group"><label>שם לשיוך (לרבנית)</label><input id="newRabbanit" placeholder="השאר ריק לפעיל"></div>
+      <div class="form-group" id="newRabbanitGroup"><label>שם לשיוך (לרבנית)</label><input id="newRabbanit" placeholder="השאר ריק לפעיל"></div>
       <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
         <button type="button" class="btn" style="background:#64748b;" onclick="closeUserModal()">ביטול</button>
         <button type="submit" class="btn">שמירה</button>
@@ -208,86 +215,308 @@ th { background: #f8fafc; }
     <div class="form-group"><label>קישור הגיליון</label><input id="sheetsUrl"></div>
     <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
       <button type="button" class="btn" style="background:#64748b;" onclick="document.getElementById('sheetsModal').classList.remove('active')">סגור</button>
-      <button class="btn" onclick="syncSheets()">סנכרן</button>
+      <button type="button" class="btn" onclick="syncSheets()">סנכרן</button>
     </div>
     <div id="syncStatus"></div>
   </div>
 </div>
 
 <script>
+'use strict';
 const TEMPLATES = {
   invite: `שלום {name},\nאנחנו מזוהר הרשבי שמחים להזמין אותך לחוג בית של הפרשת חלה אצל הרבנית {rabbanit}.\nנשמח לשמוע ממך!`,
   reminder: `שלום {name},\nתזכורת: החוג בית אצל הרבנית {rabbanit} מתקיים בקרוב.\nנשמח לראותך!`,
   thanks: `שלום {name},\nתודה שהשתתפת בחוג הבית של הרבנית {rabbanit}!\nנשמח אם תוכלי להמליץ לחברות נוספות.`
 };
 
-let leads = JSON.parse(localStorage.getItem('zohar_leads') || '[]');
-let users = JSON.parse(localStorage.getItem('zohar_users') || '{}');
-if (!users['מנהל']) {
-  users['מנהל'] = { pass: 'מנהל123', name: 'מנהל', role: 'admin', rabbanit: '' };
-}
-if (!users['פעיל']) {
-  users['פעיל'] = { pass: 'פעיל123', name: 'פעיל', role: 'operator', rabbanit: '' };
-}
-if (users['מפעילה']) delete users['מפעילה'];
-localStorage.setItem('zohar_users', JSON.stringify(users));
+const STATUS_TEXT = { open:'פתוח', closed:'נסגר', 'not-closed':'לא נסגר', cancelled:'ביטל' };
+const ORDER_TEXT = { active:'פעילה', inactive:'לא פעילה', pending:'ממתינה' };
+const STATUS_FROM_TEXT = {
+  open:'open', 'פתוח':'open', closed:'closed', 'נסגר':'closed', 'נסגר חוג בית':'closed',
+  'not-closed':'not-closed', 'לא נסגר':'not-closed', cancelled:'cancelled', 'ביטל':'cancelled'
+};
+const ORDER_FROM_TEXT = {
+  active:'active', 'פעילה':'active', inactive:'inactive', 'לא פעילה':'inactive',
+  pending:'pending', 'ממתינה':'pending', '':'', 'לא רלוונטי':''
+};
+const FIELD_ALIASES = {
+  name: ['שם', 'name', 'full name', 'fullname', 'full_name', 'שם מלא'],
+  phone: ['טלפון', 'phone', 'phone number', 'phone_number', 'mobile', 'נייד', 'פלאפון'],
+  email: ['אימייל', 'email', 'מייל', 'e-mail'],
+  source: ['מקור', 'source', 'קמפיין', 'campaign'],
+  cost: ['עלות', 'cost'],
+  status: ['סטטוס', 'status'],
+  standingOrders: ['הוראות קבע', 'standingorders', 'orders'],
+  cash: ['מזומן', 'cash'],
+  orderStatus: ['סטטוס קבע', 'orderstatus', 'סטטוס הוראת קבע'],
+  monthlyAmount: ['סכום חודשי', 'monthly', 'monthlyamount'],
+  rabbanit: ['רבנית', 'rabbanit'],
+  eventDate: ['תאריך חוג', 'תאריך', 'date', 'eventdate'],
+  notes: ['הערות', 'notes', 'note']
+};
+const KNOWN_HEADERS = new Set(Object.values(FIELD_ALIASES).flat().map(s => s.toLowerCase()));
+const ADMIN_USERNAME = 'מנהל';
+
+let leads = [];
+let users = {};
 let currentUser = null;
+let idSeq = 0;
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null || raw === '') return structuredClone(fallback);
+    const parsed = JSON.parse(raw);
+    return parsed == null ? structuredClone(fallback) : parsed;
+  } catch (err) {
+    return structuredClone(fallback);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function asCount(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? String(n) : '0';
+}
+
+function asMoney(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n.toFixed(0) : '0';
+}
+
+function newId() {
+  idSeq += 1;
+  return Date.now().toString(36) + idSeq.toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function canonicalId(id) {
+  if (typeof id === 'number' && Number.isFinite(id)) return String(id);
+  if (typeof id === 'string' && id.trim()) return id.trim();
+  return '';
+}
+
+function findLead(id) {
+  const key = String(id);
+  return leads.find(l => String(l.id) === key);
+}
+
+function saveLeads(silent) {
+  try {
+    localStorage.setItem('zohar_leads', JSON.stringify(leads));
+  } catch (err) {
+    if (!silent) alert('שמירת הנתונים נכשלה. ייתכן שהאחסון המקומי מלא.');
+  }
+}
+
+function saveUsers() {
+  try {
+    localStorage.setItem('zohar_users', JSON.stringify(users));
+    return true;
+  } catch (err) {
+    alert('שמירת המשתמשים נכשלה. ייתכן שהאחסון המקומי מלא.');
+    return false;
+  }
+}
+
+function normalizeLeadIds() {
+  if (!Array.isArray(leads)) {
+    leads = [];
+    return;
+  }
+  const seen = new Set();
+  let changed = false;
+  const next = [];
+  for (const item of leads) {
+    if (!item || typeof item !== 'object') {
+      changed = true;
+      continue;
+    }
+    const copy = { ...item };
+    let id = canonicalId(copy.id);
+    if (!id || seen.has(id)) {
+      id = newId();
+      changed = true;
+    }
+    if (copy.id !== id) changed = true;
+    copy.id = id;
+    seen.add(id);
+    if (copy.name != null && typeof copy.name !== 'string') copy.name = String(copy.name);
+    next.push(copy);
+  }
+  leads = next;
+  if (changed) saveLeads(true);
+}
+
+async function sha256(text) {
+  if (!crypto.subtle) throw new Error('הדפדפן לא תומך בגיבוב מאובטח. פתחו את האתר דרך HTTPS.');
+  const data = new TextEncoder().encode(String(text));
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function ensureUsers() {
+  const loaded = loadJSON('zohar_users', {});
+  users = loaded && typeof loaded === 'object' && !Array.isArray(loaded) ? loaded : {};
+  let changed = false;
+  for (const [key, user] of Object.entries(users)) {
+    if (!user || typeof user !== 'object') {
+      delete users[key];
+      changed = true;
+      continue;
+    }
+    if (typeof user.passHash === 'string' && user.passHash) {
+      if (Object.prototype.hasOwnProperty.call(user, 'pass')) {
+        delete user.pass;
+        changed = true;
+      }
+    } else if (typeof user.pass === 'string') {
+      user.passHash = await sha256(user.pass);
+      delete user.pass;
+      changed = true;
+    }
+  }
+  if (users['מפעילה']) {
+    delete users['מפעילה'];
+    changed = true;
+  }
+  // סיסמאות ברירת המחדל נשמרות רק כגיבוב, ורק אם החשבון עדיין לא קיים.
+  if (!users[ADMIN_USERNAME]) {
+    users[ADMIN_USERNAME] = { passHash: await sha256('מנהל123'), name: 'מנהל', role: 'admin', rabbanit: '' };
+    changed = true;
+  } else if (!users[ADMIN_USERNAME].passHash) {
+    users[ADMIN_USERNAME].passHash = await sha256('מנהל123');
+    users[ADMIN_USERNAME].role = 'admin';
+    changed = true;
+  }
+  if (!users['פעיל']) {
+    users['פעיל'] = { passHash: await sha256('פעיל123'), name: 'פעיל', role: 'operator', rabbanit: '' };
+    changed = true;
+  } else if (!users['פעיל'].passHash && !Object.prototype.hasOwnProperty.call(users['פעיל'], 'pass')) {
+    users['פעיל'].passHash = await sha256('פעיל123');
+    changed = true;
+  }
+  if (changed) saveUsers();
+}
 
 function isAdmin() {
   return currentUser && currentUser.role === 'admin';
 }
 
-function doLogin() {
+function isProtectedUsername(name) {
+  const trimmed = String(name || '').trim();
+  return trimmed === ADMIN_USERNAME || trimmed.toLowerCase() === 'admin';
+}
+
+function scopedLeads() {
+  if (currentUser && currentUser.role === 'rabbanit' && currentUser.rabbanit) {
+    return leads.filter(l => l.rabbanit === currentUser.rabbanit);
+  }
+  return leads;
+}
+
+function roleLabel(role) {
+  if (role === 'admin') return 'מנהל';
+  if (role === 'operator') return 'פעיל';
+  return 'רבנית';
+}
+
+async function doLogin(e) {
+  if (e && e.preventDefault) e.preventDefault();
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
-  if (users[u] && users[u].pass === p) {
+  try {
+    await appReady;
+    const hash = await sha256(p);
+    if (!(users[u] && users[u].passHash && users[u].passHash === hash)) {
+      alert('שם משתמש או סיסמה שגויים');
+      return;
+    }
     currentUser = { ...users[u], username: u };
+    delete currentUser.pass;
+    document.getElementById('loginPass').value = '';
+    closeAllModals();
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-    document.getElementById('userInfo').textContent = 'שלום ' + currentUser.name + (isAdmin() ? ' (מנהל)' : (currentUser.role === 'operator' ? ' (פעיל)' : ' (רבנית)'));
-    // Hide financial tabs/elements for non-admin
-    const reportsTab = document.querySelector('.tab[onclick*="reports"]');
+    document.getElementById('userInfo').textContent = 'שלום ' + (currentUser.name || '') + ' (' + roleLabel(currentUser.role) + ')';
+    const reportsTab = document.querySelector('.tab[data-tab="reports"]');
     if (reportsTab) reportsTab.style.display = isAdmin() ? '' : 'none';
-    const usersTab = document.querySelector('.tab[onclick*="users"]');
+    const usersTab = document.querySelector('.tab[data-tab="users"]');
     if (usersTab) usersTab.style.display = isAdmin() ? '' : 'none';
-    loadTemplate();
+    switchTab('leads');
     renderLeads();
     if (isAdmin()) renderUsers();
-  } else alert('שם משתמש או סיסמה שגויים');
+    loadTemplate();
+  } catch (err) {
+    alert('לא ניתן לבדוק את הסיסמה בדפדפן זה');
+  }
+}
+
+function closeAllModals() {
+  document.querySelectorAll('.modal').forEach(m => m.classList.remove('active'));
 }
 
 function doLogout() {
   currentUser = null;
+  const pass = document.getElementById('loginPass');
+  if (pass) pass.value = '';
+  closeAllModals();
   document.getElementById('app').classList.add('hidden');
   document.getElementById('loginScreen').classList.remove('hidden');
+  switchTab('leads');
 }
 
-function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  event.target.classList.add('active');
-  ['leads','reports','calendar','whatsapp','users'].forEach(p => {
+function switchTab(name, ev) {
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t && t.classList) t.classList.remove('active');
+  });
+  let trigger = null;
+  if (ev && ev.currentTarget && ev.currentTarget.classList && ev.currentTarget.classList.contains('tab')) {
+    trigger = ev.currentTarget;
+  }
+  if (!trigger && ev && ev.target) {
+    const el = ev.target.nodeType === 1 ? ev.target : ev.target.parentElement;
+    if (el && el.closest) trigger = el.closest('.tab');
+  }
+  if (!trigger) trigger = document.querySelector('.tab[data-tab="' + name + '"]');
+  if (trigger && trigger.classList) trigger.classList.add('active');
+  ['leads', 'reports', 'calendar', 'whatsapp', 'users'].forEach(p => {
     const el = document.getElementById('panel-' + p);
     if (el) el.classList.toggle('hidden', p !== name);
   });
   if (name === 'reports') renderReports();
   if (name === 'calendar') renderCalendar();
-  if (name === 'users') renderUsers();
+  if (name === 'users' && isAdmin()) renderUsers();
+  if (name === 'whatsapp') fillWaFilter();
 }
 
-function saveLeads() { localStorage.setItem('zohar_leads', JSON.stringify(leads)); }
+function formatDate(value) {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return escapeHtml(value);
+  return escapeHtml(d.toLocaleDateString('he-IL'));
+}
 
 function updateStats() {
-  const total = leads.length;
-  const closed = leads.filter(l => l.status === 'closed').length;
-  const activeOrders = leads.filter(l => l.orderStatus === 'active').length;
+  const data = scopedLeads();
+  const total = data.length;
+  const closed = data.filter(l => l.status === 'closed').length;
+  const activeOrders = data.filter(l => l.orderStatus === 'active').length;
   let html = `
     <div class="stat-card"><div class="num">${total}</div><div>לידים</div></div>
     <div class="stat-card"><div class="num">${closed}</div><div>חוגים שנסגרו</div></div>
     <div class="stat-card"><div class="num">${activeOrders}</div><div>הוראות קבע פעילות</div></div>
   `;
   if (isAdmin()) {
-    const monthlyIncome = leads.filter(l => l.orderStatus === 'active').reduce((s,l) => s + (+l.monthlyAmount||0), 0);
-    const totalCost = leads.reduce((s,l) => s + (+l.cost||0), 0);
+    const monthlyIncome = data.filter(l => l.orderStatus === 'active').reduce((s, l) => s + (Number(l.monthlyAmount) || 0), 0);
+    const totalCost = data.reduce((s, l) => s + (Number(l.cost) || 0), 0);
     html += `
       <div class="stat-card"><div class="num">₪${monthlyIncome.toFixed(0)}</div><div>הכנסה חודשית</div></div>
       <div class="stat-card"><div class="num">₪${totalCost.toFixed(0)}</div><div>עלות פרסום</div></div>
@@ -296,111 +525,153 @@ function updateStats() {
   document.getElementById('stats').innerHTML = html;
 }
 
+function fillSelect(select, names, placeholder, current) {
+  if (!select) return;
+  select.innerHTML = `<option value="">${placeholder}</option>` + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  if ([...select.options].some(o => o.value === current)) select.value = current;
+}
+
 function updateRabbanitFilter() {
   const select = document.getElementById('filterRabbanit');
   if (!select) return;
-  const current = select.value;
-  const names = [...new Set(leads.map(l => l.rabbanit).filter(Boolean))];
-  select.innerHTML = '<option value="">כל הרבניות</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
-  select.value = current;
+  const names = [...new Set(scopedLeads().map(l => l.rabbanit).filter(Boolean))];
+  fillSelect(select, names, 'כל הרבניות', select.value);
+}
+
+function fillWaFilter() {
+  const select = document.getElementById('waRabbanitFilter');
+  if (!select) return;
+  const names = [...new Set(scopedLeads().map(l => l.rabbanit).filter(Boolean))];
+  fillSelect(select, names, 'כל הרבניות / כל החוגים', select.value);
+}
+
+function actionButton(action, id, label, className, style) {
+  return `<button type="button" class="${className}" style="padding:0.3rem 0.5rem;font-size:0.8rem;${style || ''}" data-action="${action}" data-id="${escapeHtml(id)}">${label}</button>`;
 }
 
 function renderLeads() {
   const search = (document.getElementById('search')?.value || '').toLowerCase();
   const st = document.getElementById('filterStatus')?.value || '';
   const rab = document.getElementById('filterRabbanit')?.value || '';
-  let filtered = leads.filter(l => {
-    if (currentUser?.role === 'rabbanit' && currentUser.rabbanit && l.rabbanit !== currentUser.rabbanit) return false;
-    const okS = !search || l.name.toLowerCase().includes(search) || (l.phone||'').includes(search);
+  const filtered = scopedLeads().filter(l => {
+    const name = String(l.name || '');
+    const phone = String(l.phone || '');
+    const okS = !search || name.toLowerCase().includes(search) || phone.includes(search);
     const okSt = !st || l.status === st;
     const okR = !rab || l.rabbanit === rab;
     return okS && okSt && okR;
   });
-  const statusText = { open:'פתוח', closed:'נסגר', 'not-closed':'לא נסגר', cancelled:'ביטל' };
-  const orderText = { active:'פעילה', inactive:'לא פעילה', pending:'ממתינה' };
   const now = Date.now();
+  const colCount = isAdmin() ? 11 : 10;
   document.getElementById('leadsBody').innerHTML = filtered.map(l => {
-    const daysOpen = l.status === 'open' ? Math.floor((now - new Date(l.createdAt)) / (24*60*60*1000)) : 0;
+    const created = new Date(l.createdAt).getTime();
+    const daysOpen = l.status === 'open' && Number.isFinite(created) ? Math.floor((now - created) / (24 * 60 * 60 * 1000)) : 0;
     const urgentClass = daysOpen > 3 ? 'urgent' : '';
-    const costCell = isAdmin() ? `<td>₪${(+l.cost||0).toFixed(0)}</td>` : '';
+    const knownStatus = !!l.status && Object.prototype.hasOwnProperty.call(STATUS_TEXT, l.status);
+    const statusClass = knownStatus ? l.status : '';
+    const statusLabel = knownStatus ? STATUS_TEXT[l.status] : escapeHtml(l.status || '');
+    const orderLabel = l.orderStatus && Object.prototype.hasOwnProperty.call(ORDER_TEXT, l.orderStatus) ? ORDER_TEXT[l.orderStatus] : '-';
+    const costCell = isAdmin() ? `<td>₪${asMoney(l.cost)}</td>` : '';
+    const actions = [
+      actionButton('edit', l.id, 'עריכה', 'btn', ''),
+      actionButton('copy', l.id, 'העתק', 'btn', 'background:#64748b;'),
+      actionButton('note', l.id, 'הערה', 'btn', 'background:#f59e0b;'),
+      actionButton('wa', l.id, 'וואטסאפ', 'btn btn-wa', ''),
+      actionButton('delete', l.id, 'מחיקה', 'btn', 'background:#dc2626;')
+    ].join(' ');
     return `
     <tr class="${urgentClass}">
-      <td><strong>${l.name}</strong>${daysOpen > 3 ? ' <span style="color:#dc2626;font-size:0.7rem;">('+daysOpen+' ימים)</span>' : ''}</td>
-      <td>${l.phone||''}</td>
-      <td>${l.source||''}</td>
+      <td><strong>${escapeHtml(l.name || '')}</strong>${daysOpen > 3 ? ' <span style="color:#dc2626;font-size:0.7rem;">(' + daysOpen + ' ימים)</span>' : ''}</td>
+      <td>${escapeHtml(l.phone || '')}</td>
+      <td>${escapeHtml(l.source || '')}</td>
       ${costCell}
-      <td><span class="status ${l.status}">${statusText[l.status]||l.status}</span></td>
-      <td>${l.standingOrders||0}</td>
-      <td>₪${(+l.cash||0).toFixed(0)}</td>
-      <td>${orderText[l.orderStatus]||'-'}</td>
-      <td>${l.rabbanit||'-'}</td>
-      <td>${l.eventDate ? new Date(l.eventDate).toLocaleDateString('he-IL') : '-'}</td>
-      <td>
-        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="editLead('${l.id}')">עריכה</button>
-        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#64748b;" onclick="copyLead('${l.id}')">העתק</button>
-        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#f59e0b;" onclick="quickNote('${l.id}')">הערה</button>
-        <button class="btn btn-wa" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="sendWA('${l.id}')">וואטסאפ</button>
-      </td>
+      <td><span class="status ${statusClass}">${statusLabel}</span></td>
+      <td>${asCount(l.standingOrders)}</td>
+      <td>₪${asMoney(l.cash)}</td>
+      <td>${orderLabel}</td>
+      <td>${escapeHtml(l.rabbanit || '-')}</td>
+      <td>${formatDate(l.eventDate)}</td>
+      <td>${actions}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:2rem;">אין לידים</td></tr>';
+  }).join('') || `<tr><td colspan="${colCount}" style="text-align:center;padding:2rem;">אין לידים</td></tr>`;
   updateStats();
   updateRabbanitFilter();
-  // Hide cost column for non-admin
+  fillWaFilter();
   const costHeader = document.getElementById('costHeader');
   if (costHeader) costHeader.style.display = isAdmin() ? '' : 'none';
 }
 
+function onLeadAction(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const id = btn.getAttribute('data-id');
+  const action = btn.getAttribute('data-action');
+  if (action === 'edit') editLead(id);
+  else if (action === 'copy') copyLead(id);
+  else if (action === 'note') quickNote(id);
+  else if (action === 'wa') sendWA(id);
+  else if (action === 'delete') deleteLead(id);
+}
+
 function renderCalendar() {
-  const upcoming = leads
-    .filter(l => l.eventDate && new Date(l.eventDate) >= new Date().setHours(0,0,0,0))
-    .sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate));
+  const today = new Date().setHours(0, 0, 0, 0);
+  const upcoming = scopedLeads()
+    .filter(l => l.eventDate && new Date(l.eventDate) >= today)
+    .sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
   document.getElementById('calendarContainer').innerHTML = upcoming.length
-    ? upcoming.map(l => `<div class="cal-item"><strong>${new Date(l.eventDate).toLocaleDateString('he-IL')}</strong> – ${l.name} (${l.rabbanit||'ללא רבנית'})<br><small>${l.phone||''}</small></div>`).join('')
+    ? upcoming.map(l => `<div class="cal-item"><strong>${formatDate(l.eventDate)}</strong> – ${escapeHtml(l.name || '')} (${escapeHtml(l.rabbanit || 'ללא רבנית')})<br><small>${escapeHtml(l.phone || '')}</small></div>`).join('')
     : '<p>אין חוגים קרובים מתוכננים</p>';
 }
 
 function copyLead(id) {
-  const l = leads.find(x => x.id === id);
+  const l = findLead(id);
   if (!l) return;
-  const text = `${l.name}\n${l.phone}`;
-  navigator.clipboard.writeText(text).then(() => alert('הועתק: ' + l.name));
+  const text = `${l.name || ''}\n${l.phone || ''}`;
+  const done = () => alert('הועתק!');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(done);
+  } else done();
 }
 
 function quickNote(id) {
-  const l = leads.find(x => x.id === id);
+  const l = findLead(id);
   if (!l) return;
   const note = prompt('הערה מהירה:', l.notes || '');
-  if (note !== null) {
-    l.notes = note;
-    if (!l.history) l.history = [];
-    l.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: 'הערה עודכנה' });
-    saveLeads();
-    renderLeads();
-  }
+  if (note === null) return;
+  l.notes = note;
+  if (!Array.isArray(l.history)) l.history = [];
+  l.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: 'הערה עודכנה' });
+  saveLeads();
+  renderLeads();
+}
+
+function deleteLead(id) {
+  const l = findLead(id);
+  if (!l) return alert('הליד לא נמצא');
+  if (!confirm('למחוק את הליד של ' + (l.name || '') + '?')) return;
+  leads = leads.filter(x => String(x.id) !== String(l.id));
+  saveLeads();
+  renderLeads();
 }
 
 function renderReports() {
-  const totalAdCost = leads.reduce((s,l) => s + (+l.cost||0), 0);
-  const totalEventCost = leads.reduce((s,l) => s + (+l.eventCost||0), 0);
+  const data = scopedLeads();
+  const totalAdCost = data.reduce((s, l) => s + (Number(l.cost) || 0), 0);
+  const totalEventCost = data.reduce((s, l) => s + (Number(l.eventCost) || 0), 0);
   const totalCost = totalAdCost + totalEventCost;
-  const oneTimeIncome = leads.reduce((s,l) => s + (+l.oneTime||0), 0);
-  
-  // Calculate months active for standing orders
+  const oneTimeIncome = data.reduce((s, l) => s + (Number(l.oneTime) || 0), 0);
   let standingIncome = 0;
-  leads.filter(l => l.orderStatus === 'active' && l.orderStart).forEach(l => {
+  data.filter(l => l.orderStatus === 'active' && l.orderStart).forEach(l => {
     const start = new Date(l.orderStart);
-    const months = Math.max(1, Math.round((new Date() - start) / (30*24*60*60*1000)));
-    standingIncome += (+l.monthlyAmount||0) * months;
+    const months = Math.max(1, Math.round((new Date() - start) / (30 * 24 * 60 * 60 * 1000)));
+    standingIncome += (Number(l.monthlyAmount) || 0) * (Number.isFinite(months) ? months : 1);
   });
-  // Also add active orders without start date (assume 1 month)
-  leads.filter(l => l.orderStatus === 'active' && !l.orderStart).forEach(l => {
-    standingIncome += (+l.monthlyAmount||0);
+  data.filter(l => l.orderStatus === 'active' && !l.orderStart).forEach(l => {
+    standingIncome += (Number(l.monthlyAmount) || 0);
   });
-
   const totalIncome = standingIncome + oneTimeIncome;
   const net = totalIncome - totalCost;
   const roi = totalCost > 0 ? (net / totalCost * 100).toFixed(0) : 0;
-
   document.getElementById('roiBox').innerHTML = `
     <h3>דוח ROI מדויק</h3>
     <p>עלות פרסום: <strong>₪${totalAdCost.toFixed(0)}</strong></p>
@@ -415,118 +686,142 @@ function renderReports() {
     <p>ROI: <strong>${roi}%</strong></p>
   `;
   const by = {};
-  leads.forEach(l => {
+  data.forEach(l => {
     const r = l.rabbanit || 'ללא שיוך';
-    if (!by[r]) by[r] = {leads:0, closed:0, active:0, income:0};
+    if (!by[r]) by[r] = { leads: 0, closed: 0, active: 0, income: 0 };
     by[r].leads++;
     if (l.status === 'closed') by[r].closed++;
-    if (l.orderStatus === 'active') { by[r].active++; by[r].income += (+l.monthlyAmount||0); }
+    if (l.orderStatus === 'active') {
+      by[r].active++;
+      by[r].income += (Number(l.monthlyAmount) || 0);
+    }
   });
   let html = '';
   for (const [name, d] of Object.entries(by)) {
-    html += `<div class="report-card"><h3>${name}</h3><p>לידים: ${d.leads} | חוגים: ${d.closed} | הוראות קבע פעילות: ${d.active} | הכנסה חודשית: ₪${d.income.toFixed(0)}</p></div>`;
+    html += `<div class="report-card"><h3>${escapeHtml(name)}</h3><p>לידים: ${d.leads} | חוגים: ${d.closed} | הוראות קבע פעילות: ${d.active} | הכנסה חודשית: ₪${d.income.toFixed(0)}</p></div>`;
   }
-  document.getElementById('reportsContainer').innerHTML = html || '<p>אין נתונים</p>';
-  
-  // Conversion stats by source
   const bySource = {};
-  leads.forEach(l => {
+  data.forEach(l => {
     const s = l.source || 'אחר';
     if (!bySource[s]) bySource[s] = { total: 0, closed: 0 };
     bySource[s].total++;
     if (l.status === 'closed') bySource[s].closed++;
   });
-  let sourceHtml = '<h3 style="margin-top:1.5rem;">דוח לפי מקור</h3>';
+  html += '<h3 style="margin-top:1.5rem;">דוח לפי מקור</h3>';
   for (const [name, d] of Object.entries(bySource)) {
     const rate = d.total ? Math.round(d.closed / d.total * 100) : 0;
-    sourceHtml += `<div class="report-card"><strong>${name}</strong>: ${d.total} לידים | ${d.closed} חוגים | המרה: ${rate}%</div>`;
+    html += `<div class="report-card"><strong>${escapeHtml(name)}</strong>: ${d.total} לידים | ${d.closed} חוגים | המרה: ${rate}%</div>`;
   }
-  
-  // Average standing orders per closed event
-  const closedLeads = leads.filter(l => l.status === 'closed');
-  const avgOrders = closedLeads.length ? (closedLeads.reduce((s,l) => s + (+l.standingOrders||0), 0) / closedLeads.length).toFixed(1) : 0;
-  sourceHtml += `<div class="report-card" style="margin-top:1rem;"><strong>ממוצע הוראות קבע לחוג שנסגר:</strong> ${avgOrders}</div>`;
-  
-  document.getElementById('reportsContainer').innerHTML += sourceHtml;
+  const closedLeads = data.filter(l => l.status === 'closed');
+  const avgOrders = closedLeads.length ? (closedLeads.reduce((s, l) => s + (Number(l.standingOrders) || 0), 0) / closedLeads.length).toFixed(1) : 0;
+  html += `<div class="report-card" style="margin-top:1rem;"><strong>ממוצע הוראות קבע לחוג שנסגר:</strong> ${avgOrders}</div>`;
+  document.getElementById('reportsContainer').innerHTML = html || '<p>אין נתונים</p>';
 }
 
 function generateWeeklyReport() {
-  const text = `דוח שבועי זוהר CRM\nתאריך: ${new Date().toLocaleDateString('he-IL')}\nסה"כ לידים: ${leads.length}\nחוגים שנסגרו: ${leads.filter(l=>l.status==='closed').length}\nהוראות קבע פעילות: ${leads.filter(l=>l.orderStatus==='active').length}`;
+  const data = scopedLeads();
+  const text = `דוח שבועי זוהר CRM\nתאריך: ${new Date().toLocaleDateString('he-IL')}\nסה"כ לידים: ${data.length}\nחוגים שנסגרו: ${data.filter(l => l.status === 'closed').length}\nהוראות קבע פעילות: ${data.filter(l => l.orderStatus === 'active').length}`;
   document.getElementById('weeklyReport').textContent = text;
-  navigator.clipboard.writeText(text).then(() => alert('הועתק ללוח!'));
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => alert('הועתק ללוח!')).catch(() => {});
+  }
+}
+
+function setGroupVisible(id, visible) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const group = el.closest('.form-group');
+  if (group) group.style.display = visible ? '' : 'none';
 }
 
 function openLeadModal(id) {
   document.getElementById('leadModal').classList.add('active');
-  // Hide financial fields for non-admin
-  const financialFields = ['leadCost', 'leadMonthlyAmount', 'leadOneTime', 'leadEventCost', 'leadOrderStart'];
-  financialFields.forEach(fid => {
-    const el = document.getElementById(fid);
-    if (el) {
-      const group = el.closest('.form-group');
-      if (group) group.style.display = isAdmin() ? '' : 'none';
-    }
-  });
+  ['leadCost', 'leadMonthlyAmount'].forEach(fid => setGroupVisible(fid, isAdmin()));
   const historyBox = document.getElementById('historyBox');
   if (id) {
-    const l = leads.find(x => x.id === id);
+    const l = findLead(id);
+    if (!l) {
+      alert('הליד לא נמצא');
+      closeLeadModal();
+      return;
+    }
     document.getElementById('leadId').value = l.id;
-    document.getElementById('leadName').value = l.name;
-    document.getElementById('leadPhone').value = l.phone||'';
-    document.getElementById('leadEmail').value = l.email||'';
-    document.getElementById('leadSource').value = l.source||'';
-    document.getElementById('leadCost').value = l.cost||0;
-    document.getElementById('leadStatus').value = l.status||'open';
-    document.getElementById('leadOrders').value = l.standingOrders||0;
-    document.getElementById('leadCash').value = l.cash||0;
-    document.getElementById('leadOrderStatus').value = l.orderStatus||'';
-    document.getElementById('leadMonthlyAmount').value = l.monthlyAmount||0;
-    document.getElementById('leadRabbanit').value = l.rabbanit||'';
-    document.getElementById('leadEventDate').value = l.eventDate||'';
-    document.getElementById('leadNotes').value = l.notes||'';
+    document.getElementById('leadName').value = l.name || '';
+    document.getElementById('leadPhone').value = l.phone || '';
+    document.getElementById('leadEmail').value = l.email || '';
+    document.getElementById('leadSource').value = l.source || '';
+    document.getElementById('leadCost').value = l.cost || 0;
+    document.getElementById('leadStatus').value = STATUS_TEXT[l.status] ? l.status : 'open';
+    document.getElementById('leadOrders').value = l.standingOrders || 0;
+    document.getElementById('leadCash').value = l.cash || 0;
+    document.getElementById('leadOrderStatus').value = ORDER_TEXT[l.orderStatus] ? l.orderStatus : '';
+    document.getElementById('leadMonthlyAmount').value = l.monthlyAmount || 0;
+    document.getElementById('leadRabbanit').value = l.rabbanit || '';
+    document.getElementById('leadEventDate').value = l.eventDate || '';
+    document.getElementById('leadNotes').value = l.notes || '';
     document.getElementById('leadModalTitle').textContent = 'עריכת ליד';
-    historyBox.innerHTML = (l.history||[]).map(h => `<div>${h.date} – ${h.user}: ${h.change}</div>`).join('') || 'אין היסטוריה';
+    historyBox.innerHTML = (Array.isArray(l.history) ? l.history : []).map(h => {
+      if (!h || typeof h !== 'object') return '';
+      return `<div>${escapeHtml(h.date)} – ${escapeHtml(h.user)}: ${escapeHtml(h.change)}</div>`;
+    }).join('') || 'אין היסטוריה';
   } else {
     document.querySelector('#leadModal form').reset();
     document.getElementById('leadId').value = '';
     document.getElementById('leadModalTitle').textContent = 'ליד חדש';
-    historyBox.innerHTML = '';
+    historyBox.textContent = '';
   }
 }
-function closeLeadModal() { document.getElementById('leadModal').classList.remove('active'); }
+
+function closeLeadModal() {
+  document.getElementById('leadModal').classList.remove('active');
+}
+
+function applyField(obj, key, id, parser) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  obj[key] = parser ? parser(el.value) : el.value;
+}
 
 function saveLead(e) {
   e.preventDefault();
   const id = document.getElementById('leadId').value;
-  const old = id ? leads.find(l => l.id === id) : null;
-  const lead = {
-    id: id || Date.now().toString(),
-    name: document.getElementById('leadName').value,
-    phone: document.getElementById('leadPhone').value,
-    email: document.getElementById('leadEmail').value,
-    source: document.getElementById('leadSource').value,
-    cost: +document.getElementById('leadCost').value || 0,
-    status: document.getElementById('leadStatus').value,
-    standingOrders: +document.getElementById('leadOrders').value || 0,
-    cash: +document.getElementById('leadCash').value || 0,
-    orderStatus: document.getElementById('leadOrderStatus').value,
-    monthlyAmount: +document.getElementById('leadMonthlyAmount').value || 0,
-    orderStart: document.getElementById('leadOrderStart').value,
-    oneTime: +document.getElementById('leadOneTime').value || 0,
-    eventCost: +document.getElementById('leadEventCost').value || 0,
-    rabbanit: document.getElementById('leadRabbanit').value,
-    eventDate: document.getElementById('leadEventDate').value,
-    notes: document.getElementById('leadNotes').value,
-    createdAt: old ? old.createdAt : new Date().toISOString(),
-    history: old ? [...(old.history||[])] : []
+  const old = id ? findLead(id) : null;
+  const lead = old ? { ...old, history: [...(Array.isArray(old.history) ? old.history : [])] } : {
+    id: newId(),
+    createdAt: new Date().toISOString(),
+    history: [],
+    orderStart: '',
+    oneTime: 0,
+    eventCost: 0
   };
+  lead.id = String(lead.id);
+  applyField(lead, 'name', 'leadName');
+  applyField(lead, 'phone', 'leadPhone');
+  applyField(lead, 'email', 'leadEmail');
+  applyField(lead, 'source', 'leadSource');
+  applyField(lead, 'cost', 'leadCost', v => +v || 0);
+  applyField(lead, 'status', 'leadStatus');
+  applyField(lead, 'standingOrders', 'leadOrders', v => +v || 0);
+  applyField(lead, 'cash', 'leadCash', v => +v || 0);
+  applyField(lead, 'orderStatus', 'leadOrderStatus');
+  applyField(lead, 'monthlyAmount', 'leadMonthlyAmount', v => +v || 0);
+  applyField(lead, 'orderStart', 'leadOrderStart');
+  applyField(lead, 'oneTime', 'leadOneTime', v => +v || 0);
+  applyField(lead, 'eventCost', 'leadEventCost', v => +v || 0);
+  applyField(lead, 'rabbanit', 'leadRabbanit');
+  applyField(lead, 'eventDate', 'leadEventDate');
+  applyField(lead, 'notes', 'leadNotes');
+  if (!lead.createdAt) lead.createdAt = new Date().toISOString();
   if (old && old.status !== lead.status) {
-    lead.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name||'מערכת', change: `סטטוס: ${old.status} → ${lead.status}` });
+    lead.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: `סטטוס: ${old.status} → ${lead.status}` });
   }
-  if (id) {
-    const i = leads.findIndex(l => l.id === id);
+  if (old) {
+    const i = leads.findIndex(l => String(l.id) === String(old.id));
     if (i >= 0) leads[i] = lead;
-  } else leads.unshift(lead);
+    else leads.unshift(lead);
+  } else {
+    leads.unshift(lead);
+  }
   saveLeads();
   renderLeads();
   closeLeadModal();
@@ -534,126 +829,361 @@ function saveLead(e) {
 
 function editLead(id) { openLeadModal(id); }
 
-function copyLead(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  navigator.clipboard.writeText(l.name + '\n' + (l.phone||'')).then(() => alert('הועתק!'));
-}
-
-function quickNote(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
-  const note = prompt('הערה מהירה:', l.notes || '');
-  if (note !== null) {
-    l.notes = note;
-    if (!l.history) l.history = [];
-    l.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: 'הערה עודכנה' });
-    saveLeads();
-    renderLeads();
-  }
-}
-
 function loadTemplate() {
   const key = document.getElementById('templateSelect')?.value || 'invite';
   const ta = document.getElementById('waTemplate');
   if (ta) ta.value = TEMPLATES[key] || '';
+  clearWaQueue();
+}
+
+function clearWaQueue() {
+  const box = document.getElementById('waQueue');
+  if (box) box.innerHTML = '';
+}
+
+function fillTemplate(tpl, lead) {
+  const map = {
+    '{name}': lead.name || '',
+    '{rabbanit}': lead.rabbanit || '',
+    '{date}': lead.eventDate || ''
+  };
+  return String(tpl || '').replace(/\{name\}|\{rabbanit\}|\{date\}/g, token => map[token] ?? '');
+}
+
+function waPhone(phone) {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('0')) d = '972' + d.slice(1);
+  return d;
+}
+
+function waUrl(lead, template) {
+  const msg = fillTemplate(template, lead);
+  return 'https://wa.me/' + waPhone(lead.phone) + '?text=' + encodeURIComponent(msg);
+}
+
+function openExternal(url) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
 
 function sendWA(id) {
-  const l = leads.find(x => x.id === id);
-  if (!l) return;
+  const l = findLead(id);
+  if (!l) return alert('הליד לא נמצא');
+  if (!waPhone(l.phone)) return alert('אין מספר טלפון לליד');
   const tpl = document.getElementById('waTemplate')?.value || TEMPLATES.invite;
-  const msg = tpl.replace(/{name}/g, l.name).replace(/{rabbanit}/g, l.rabbanit||'').replace(/{date}/g, l.eventDate||'');
-  const phone = (l.phone||'').replace(/\D/g,'').replace(/^0/,'972');
-  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+  openExternal(waUrl(l, tpl));
 }
 
 function sendWAToOpen() {
   const rabbanitFilter = document.getElementById('waRabbanitFilter')?.value || '';
-  let targets = leads.filter(l => l.status === 'open');
+  let targets = scopedLeads().filter(l => l.status === 'open' && waPhone(l.phone));
   if (rabbanitFilter) targets = targets.filter(l => l.rabbanit === rabbanitFilter);
   if (!targets.length) return alert('אין לידים מתאימים');
-  if (confirm('לפתוח וואטסאפ ל-' + targets.length + ' לידים?')) {
-    targets.forEach((l,i) => setTimeout(() => sendWA(l.id), i*700));
-  }
+  if (!confirm('להכין שליחת וואטסאפ ל-' + targets.length + ' לידים?')) return;
+  const tpl = document.getElementById('waTemplate')?.value || TEMPLATES.invite;
+  const box = document.getElementById('waQueue');
+  if (!box) return;
+  const links = targets.map(l => {
+    const url = waUrl(l, tpl);
+    return `<div style="margin:0.4rem 0;"><a class="btn btn-wa" target="_blank" rel="noopener noreferrer" href="${escapeHtml(url)}">וואטסאפ אל ${escapeHtml(l.name || '')}${l.phone ? ' · ' + escapeHtml(l.phone) : ''}</a></div>`;
+  }).join('');
+  box.innerHTML = `<p style="font-size:0.9rem;">נמצאו ${targets.length} לידים פתוחים. כל קישור נפתח בלחיצה נפרדת, כדי שהדפדפן לא יחסום חלונות.</p>` + links;
+}
+
+function csvCell(value) {
+  const s = value == null ? '' : String(value);
+  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function buildCSV(data) {
+  const headers = ['שם', 'טלפון', 'אימייל', 'מקור', 'עלות', 'סטטוס', 'הוראות קבע', 'מזומן', 'סטטוס קבע', 'סכום חודשי', 'רבנית', 'תאריך חוג', 'הערות'];
+  const rows = [headers];
+  data.forEach(l => rows.push([
+    l.name, l.phone, l.email, l.source, l.cost, l.status, l.standingOrders, l.cash, l.orderStatus, l.monthlyAmount, l.rabbanit, l.eventDate || '', l.notes || ''
+  ]));
+  return '\uFEFF' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
 }
 
 function exportCSV() {
-  const rows = [['שם','טלפון','מקור','עלות','סטטוס','הוראות קבע','סטטוס קבע','סכום חודשי','רבנית','תאריך חוג']];
-  leads.forEach(l => rows.push([l.name, l.phone, l.source, l.cost, l.status, l.standingOrders, l.orderStatus, l.monthlyAmount, l.rabbanit, l.eventDate||'']));
+  const csv = buildCSV(scopedLeads());
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob(['\uFEFF'+rows.map(r=>r.join(',')).join('\n')], {type:'text/csv'}));
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   a.download = 'zohar-leads.csv';
+  document.body.appendChild(a);
   a.click();
+  a.remove();
 }
 
-function openSheetsModal() { document.getElementById('sheetsModal').classList.add('active'); }
+function parseDelimited(text, delimiter) {
+  const input = String(text || '').replace(/^\uFEFF/, '');
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < input.length; i++) {
+    const c = input[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (input[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += c;
+      }
+    } else if (c === '"') {
+      inQuotes = true;
+    } else if (c === delimiter) {
+      row.push(field);
+      field = '';
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && input[i + 1] === '\n') i++;
+      row.push(field);
+      rows.push(row);
+      row = [];
+      field = '';
+    } else {
+      field += c;
+    }
+  }
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push(row);
+  }
+  return rows.filter(r => r.some(cell => String(cell).trim() !== ''));
+}
+
+function parseCSV(text) {
+  const sample = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).slice(0, 5).join('\n');
+  const commas = (sample.match(/,/g) || []).length;
+  const semis = (sample.match(/;/g) || []).length;
+  return parseDelimited(text, semis > commas && commas === 0 ? ';' : ',');
+}
+
+function looksLikeHeader(row) {
+  return row.some(cell => KNOWN_HEADERS.has(String(cell).trim().toLowerCase()));
+}
+
+function headerIndex(headers, field) {
+  const aliases = FIELD_ALIASES[field] || [];
+  const norm = headers.map(h => String(h).trim().toLowerCase());
+  for (const alias of aliases) {
+    const i = norm.indexOf(alias.toLowerCase());
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function valueAt(cols, idx) {
+  if (typeof idx !== 'number' || idx < 0 || idx >= cols.length) return '';
+  return cols[idx] == null ? '' : String(cols[idx]).trim();
+}
+
+function phoneKey(phone) {
+  let d = String(phone || '').replace(/\D/g, '');
+  if (d.startsWith('00')) d = d.slice(2);
+  if (d.startsWith('972')) d = d.slice(3);
+  d = d.replace(/^0+/, '');
+  return d.length >= 7 ? d : '';
+}
+
+function inferRabbanit(campaign) {
+  const c = String(campaign || '');
+  if (c.includes('שרה')) return 'שרה';
+  if (c.includes('רבקה')) return 'רבקה';
+  if (c.includes('לאה')) return 'לאה';
+  return '';
+}
+
+function mapChoice(raw, table) {
+  const key = String(raw || '').trim();
+  if (Object.prototype.hasOwnProperty.call(table, key)) return table[key];
+  const lower = key.toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(table, lower)) return table[lower];
+  return '';
+}
+
+function describeImport(added, skipped) {
+  if (!added && !skipped) return 'לא נמצאו לידים לייבוא';
+  let msg = 'נוספו ' + added + ' לידים';
+  if (skipped) msg += ' · דולגו ' + skipped + ' כפולים (לפי טלפון)';
+  return msg;
+}
+
+function importLeadRows(rows, opts) {
+  const options = opts || {};
+  if (!Array.isArray(rows) || !rows.length) return { added: 0, skipped: 0 };
+  let dataRows = rows;
+  let header = null;
+  if (looksLikeHeader(rows[0])) {
+    header = rows[0].map(c => String(c).trim());
+    dataRows = rows.slice(1);
+  } else if (rows.length > 1 && !rows[0].some(c => /\d/.test(String(c))) && rows[1].some(c => /\d/.test(String(c)))) {
+    dataRows = rows.slice(1);
+  }
+  const idx = {};
+  Object.keys(FIELD_ALIASES).forEach(field => {
+    idx[field] = header ? headerIndex(header, field) : -1;
+  });
+  if (!header) {
+    idx.name = 0;
+    idx.phone = 1;
+    idx.email = 2;
+    idx.source = 3;
+  }
+  let added = 0;
+  let skipped = 0;
+  const batchPhones = new Set();
+  dataRows.forEach(cols => {
+    const name = valueAt(cols, idx.name);
+    const phone = valueAt(cols, idx.phone);
+    if (!name && !phone) return;
+    const key = phoneKey(phone);
+    if (key && (batchPhones.has(key) || leads.some(l => phoneKey(l.phone) === key))) {
+      skipped++;
+      return;
+    }
+    if (key) batchPhones.add(key);
+    const source = valueAt(cols, idx.source) || (options.source === 'sheets' && !header ? 'Facebook' : '');
+    let rabbanit = valueAt(cols, idx.rabbanit);
+    if (!rabbanit) rabbanit = inferRabbanit(source);
+    const status = mapChoice(valueAt(cols, idx.status), STATUS_FROM_TEXT) || 'open';
+    const orderStatus = mapChoice(valueAt(cols, idx.orderStatus), ORDER_FROM_TEXT);
+    leads.unshift({
+      id: newId(),
+      name: name || 'ללא שם',
+      phone,
+      email: valueAt(cols, idx.email),
+      source,
+      cost: +valueAt(cols, idx.cost) || 0,
+      status: STATUS_TEXT[status] ? status : 'open',
+      standingOrders: +valueAt(cols, idx.standingOrders) || 0,
+      cash: +valueAt(cols, idx.cash) || 0,
+      orderStatus: ORDER_TEXT[orderStatus] ? orderStatus : '',
+      monthlyAmount: +valueAt(cols, idx.monthlyAmount) || 0,
+      rabbanit,
+      eventDate: valueAt(cols, idx.eventDate),
+      notes: valueAt(cols, idx.notes) || (options.source === 'sheets' ? 'יובא' : ''),
+      createdAt: new Date().toISOString(),
+      history: [{
+        date: new Date().toLocaleString('he-IL'),
+        user: currentUser?.name || 'מערכת',
+        change: options.source === 'sheets' ? 'יובא מגוגל שיטס' : 'יובא מקובץ CSV'
+      }]
+    });
+    added++;
+  });
+  if (added) saveLeads();
+  return { added, skipped };
+}
+
+function importCSVFile(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const rows = parseCSV(String(reader.result || ''));
+      const result = importLeadRows(rows, { source: 'file' });
+      renderLeads();
+      alert(describeImport(result.added, result.skipped));
+    } catch (err) {
+      alert('שגיאה בייבוא הקובץ');
+    }
+  };
+  reader.onerror = () => alert('שגיאה בקריאת הקובץ');
+  reader.readAsText(file, 'UTF-8');
+}
+
+function openSheetsModal() {
+  document.getElementById('sheetsModal').classList.add('active');
+}
 
 async function syncSheets() {
   const url = document.getElementById('sheetsUrl').value.trim();
-  if (!url) return alert('הכנס קישור');
   const status = document.getElementById('syncStatus');
+  if (!url) {
+    status.textContent = 'הכנס קישור';
+    return;
+  }
+  status.style.color = '';
   status.textContent = 'מסנכרן...';
   try {
     let csvUrl = url;
     const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
     if (m) csvUrl = 'https://docs.google.com/spreadsheets/d/' + m[1] + '/export?format=csv';
     const res = await fetch(csvUrl);
+    if (!res.ok) throw new Error('לא ניתן לקרוא את הגיליון (' + res.status + ')');
     const text = await res.text();
-    const lines = text.split('\n');
-    let added = 0;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(',');
-      if (!cols[0]) continue;
-      const phone = (cols[1]||'').trim();
-      if (phone && leads.some(l => l.phone === phone)) continue;
-      const campaign = (cols[3] || '').toLowerCase();
-      let rabbanit = '';
-      if (campaign.includes('שרה')) rabbanit = 'שרה';
-      else if (campaign.includes('רבקה')) rabbanit = 'רבקה';
-      else if (campaign.includes('לאה')) rabbanit = 'לאה';
-      leads.unshift({ id: 's'+Date.now()+i, name: cols[0].trim(), phone, email: cols[2]||'', source: cols[3]||'Facebook', cost: 0, status: 'open', standingOrders: 0, orderStatus: '', monthlyAmount: 0, rabbanit, eventDate: '', notes: 'יובא', createdAt: new Date().toISOString(), history: [] });
-      added++;
+    if (/<!doctype html/i.test(text) || /^\s*</.test(text)) {
+      throw new Error('הגיליון לא נגיש. יש לפרסם אותו לצפייה.');
     }
-    saveLeads(); renderLeads();
-    status.innerHTML = '<span style="color:green;">נוספו '+added+' לידים</span>';
-    setTimeout(() => document.getElementById('sheetsModal').classList.remove('active'), 1200);
-  } catch(e) { status.innerHTML = '<span style="color:red;">'+e.message+'</span>'; }
+    const rows = parseCSV(text);
+    const result = importLeadRows(rows, { source: 'sheets' });
+    renderLeads();
+    status.style.color = 'green';
+    status.textContent = describeImport(result.added, result.skipped);
+    setTimeout(() => document.getElementById('sheetsModal').classList.remove('active'), 1400);
+  } catch (err) {
+    status.style.color = 'red';
+    status.textContent = err && err.message ? String(err.message) : 'הסנכרון נכשל';
+  }
 }
 
 function renderUsers() {
-  document.getElementById('usersList').innerHTML = Object.entries(users).map(([key, u]) => `
-    <tr>
-      <td>${key}</td>
-      <td>${u.name}</td>
-      <td>${u.rabbanit||'-'}</td>
-      <td>${u.role === 'admin' ? 'מנהל' : (u.role === 'operator' ? 'פעיל' : 'רבנית')}</td>
-      <td>
-        ${key !== 'מנהל' ? `
-          <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="editUser('${key}')">עריכה</button>
-          <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" onclick="deleteUser('${key}')">מחק</button>
-        ` : 'מנהל ראשי'}
-      </td>
-    </tr>
-  `).join('');
-  // Fill WA rabbanit filter
-  const waSelect = document.getElementById('waRabbanitFilter');
-  if (waSelect) {
-    const names = [...new Set(Object.values(users).map(u => u.rabbanit).filter(Boolean))];
-    waSelect.innerHTML = '<option value="">כל הרבניות / כל החוגים</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
-  }
+  const body = document.getElementById('usersList');
+  if (!body) return;
+  body.innerHTML = Object.entries(users).map(([key, u]) => {
+    if (!u || typeof u !== 'object') return '';
+    const adminUser = key === ADMIN_USERNAME || u.role === 'admin';
+    const actions = adminUser
+      ? `<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-user="${escapeHtml(key)}">שינוי סיסמה</button>`
+      : `<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-user="${escapeHtml(key)}">עריכה</button>
+         <button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" data-action="delete" data-user="${escapeHtml(key)}">מחיקה</button>`;
+    return `<tr>
+      <td>${escapeHtml(key)}</td>
+      <td>${escapeHtml(u.name || '')}</td>
+      <td>${escapeHtml(u.rabbanit || '-')}</td>
+      <td>${roleLabel(u.role)}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+  fillWaFilter();
+}
+
+function onUserAction(e) {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const key = btn.getAttribute('data-user');
+  if (btn.getAttribute('data-action') === 'edit') editUser(key);
+  else if (btn.getAttribute('data-action') === 'delete') deleteUser(key);
 }
 
 function editUser(key) {
   const u = users[key];
   if (!u) return;
   document.getElementById('userModal').classList.add('active');
-  document.querySelector('#userModal h3').textContent = 'עריכת משתמש';
+  const adminUser = key === ADMIN_USERNAME || u.role === 'admin';
+  document.querySelector('#userModal h3').textContent = adminUser ? 'שינוי סיסמת מנהל' : 'עריכת משתמש';
   document.getElementById('newUsername').value = key;
   document.getElementById('newUsername').disabled = true;
-  document.getElementById('newPassword').value = u.pass;
-  document.getElementById('newDisplayName').value = u.name;
+  document.getElementById('newPassword').value = '';
+  document.getElementById('newPassword').placeholder = 'השאר ריק כדי לא לשנות';
+  document.getElementById('newDisplayName').value = u.name || '';
   document.getElementById('newRabbanit').value = u.rabbanit || '';
+  const rabGroup = document.getElementById('newRabbanitGroup');
+  if (rabGroup) rabGroup.style.display = adminUser ? 'none' : '';
   document.getElementById('userModal').dataset.editKey = key;
 }
 
@@ -661,35 +1191,94 @@ function openAddUser() {
   document.getElementById('userModal').classList.add('active');
   document.querySelector('#userModal h3').textContent = 'הוספת משתמש';
   document.getElementById('newUsername').disabled = false;
+  document.getElementById('newPassword').placeholder = 'סיסמה';
+  const rabGroup = document.getElementById('newRabbanitGroup');
+  if (rabGroup) rabGroup.style.display = '';
   document.querySelector('#userModal form').reset();
   delete document.getElementById('userModal').dataset.editKey;
 }
 
-function closeUserModal() { 
-  document.getElementById('userModal').classList.remove('active'); 
+function closeUserModal() {
+  document.getElementById('userModal').classList.remove('active');
   document.getElementById('newUsername').disabled = false;
+  const rabGroup = document.getElementById('newRabbanitGroup');
+  if (rabGroup) rabGroup.style.display = '';
 }
 
-function saveNewUser(e) {
+async function saveNewUser(e) {
   e.preventDefault();
   const editKey = document.getElementById('userModal').dataset.editKey;
-  const username = document.getElementById('newUsername').value.trim();
+  const username = editKey || document.getElementById('newUsername').value.trim();
   const password = document.getElementById('newPassword').value;
   const displayName = document.getElementById('newDisplayName').value.trim();
   const rabbanit = document.getElementById('newRabbanit').value.trim();
-  if (!username || !password || !displayName) return alert('מלא את השדות החובה');
-  const role = editKey ? users[editKey].role : (rabbanit ? 'rabbanit' : 'operator');
-  if (editKey && editKey !== username) delete users[editKey];
-  users[username] = { pass: password, name: displayName, role: role, rabbanit: rabbanit };
-  localStorage.setItem('zohar_users', JSON.stringify(users));
-  closeUserModal();
-  renderUsers();
-  document.querySelector('#userModal form').reset();
+  if (!username || !displayName || (!editKey && !password)) {
+    alert('מלא את השדות החובה');
+    return;
+  }
+  if (!editKey && (isProtectedUsername(username) || users[username])) {
+    alert('לא ניתן ליצור משתמש בשם זה');
+    return;
+  }
+  try {
+    if (editKey) {
+      const existing = users[editKey];
+      if (!existing) {
+        alert('המשתמש לא נמצא');
+        return;
+      }
+      const adminUser = editKey === ADMIN_USERNAME || existing.role === 'admin';
+      users[editKey] = {
+        passHash: password ? await sha256(password) : existing.passHash,
+        name: displayName,
+        role: adminUser ? 'admin' : existing.role,
+        rabbanit: adminUser ? (existing.rabbanit || '') : rabbanit
+      };
+    } else {
+      users[username] = {
+        passHash: await sha256(password),
+        name: displayName,
+        role: rabbanit ? 'rabbanit' : 'operator',
+        rabbanit
+      };
+    }
+    if (!saveUsers()) return;
+    closeUserModal();
+    renderUsers();
+    document.querySelector('#userModal form').reset();
+  } catch (err) {
+    alert('שמירת המשתמש נכשלה');
+  }
 }
+
 function deleteUser(key) {
-  if (confirm('למחוק?')) { delete users[key]; localStorage.setItem('zohar_users', JSON.stringify(users)); renderUsers(); }
+  if (key === ADMIN_USERNAME || (users[key] && users[key].role === 'admin')) {
+    alert('לא ניתן למחוק את חשבון המנהל');
+    return;
+  }
+  if (!confirm('למחוק?')) return;
+  delete users[key];
+  saveUsers();
+  renderUsers();
 }
-loadTemplate();
+
+document.getElementById('leadsBody').addEventListener('click', onLeadAction);
+document.getElementById('usersList').addEventListener('click', onUserAction);
+
+async function boot() {
+  try {
+    loadTemplate();
+    const loadedLeads = loadJSON('zohar_leads', []);
+    leads = Array.isArray(loadedLeads) ? loadedLeads : [];
+    normalizeLeadIds();
+    await ensureUsers();
+  } catch (err) {
+    if (!Array.isArray(leads)) leads = [];
+    if (!users || typeof users !== 'object') users = {};
+  }
+}
+
+const appReady = boot();
 </script>
 </body>
 </html>
