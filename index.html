@@ -119,6 +119,7 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]):not([data-role="call_c
       <button type="button" class="tab tab-calendar" data-tab="calendar">לוח שנה</button>
       <button type="button" class="tab tab-wa" data-tab="whatsapp">וואטסאפ</button>
       <button type="button" class="tab tab-users" data-tab="users">ניהול משתמשים</button>
+      <button type="button" class="tab tab-rabbaniyot admin-only" data-tab="rabbaniyot">רבניות</button>
     </div>
 
     <div id="panel-leads">
@@ -190,6 +191,17 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]):not([data-role="call_c
         <button type="button" class="btn btn-wa" onclick="sendWAToOpen()">שלח לפי בחירה</button>
         <p id="waQueueStatus" style="font-size:0.9rem;"></p>
         <button type="button" class="btn hidden" id="waNextBtn" onclick="openNextWA()">פתח את הבא</button>
+      </div>
+    </div>
+
+    <div id="panel-rabbaniyot" class="hidden">
+      <h2>רבניות</h2>
+      <div class="toolbar"><button type="button" class="btn" onclick="openRabbaniyaModal()">+ הוסף רבנית</button></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>שם</th><th>סטטוס</th><th>משתמש מקושר</th><th>פעולות</th></tr></thead>
+          <tbody id="rabbaniyotList"></tbody>
+        </table>
       </div>
     </div>
 
@@ -288,10 +300,25 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]):not([data-role="call_c
           <option value="call_center">מוקד</option>
         </select>
       </div>
-      <div class="form-group" id="rabbanitNameGroup"><label>שם הרבנית לשיוך</label><input id="newRabbanitName" placeholder="השם שמופיע על החוג"></div>
+      <div class="form-group" id="rabbanitNameGroup"><label>רבנית מהרשימה</label><select id="newRabbaniyaId"></select></div>
       <div class="form-group" id="activeGroup"><label><input type="checkbox" id="newUserActive" checked> משתמש פעיל</label></div>
       <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
         <button type="button" class="btn" style="background:#64748b;" onclick="closeUserModal()">ביטול</button>
+        <button type="submit" class="btn">שמירה</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="rabbaniyaModal">
+  <div class="modal-content">
+    <h3 id="rabbaniyaModalTitle">רבנית</h3>
+    <form id="rabbaniyaForm" onsubmit="return onSaveRabbaniya(event);">
+      <input type="hidden" id="rabbaniyaId">
+      <div class="form-group"><label>שם</label><input id="rabbaniyaName" required></div>
+      <div class="form-group"><label><input type="checkbox" id="rabbaniyaActive" checked> פעילה</label></div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <button type="button" class="btn" style="background:#64748b;" onclick="closeRabbaniyaModal()">ביטול</button>
         <button type="submit" class="btn">שמירה</button>
       </div>
     </form>
@@ -342,6 +369,7 @@ var STATUS_TEXT = { open: 'פתוח', closed: 'נסגר', 'not-closed': 'לא נ
 var ORDER_TEXT = { active: 'פעילה', inactive: 'לא פעילה', pending: 'ממתינה' };
 var leads = [];
 var users = [];
+var rabbaniyot = [];
 var currentUser = null;
 var waQueue = [];
 var deferredInstall = null;
@@ -370,10 +398,14 @@ function roleLabel(role) {
 }
 function rabbanitPlain(key) {
   if (!key) return '';
-  if (currentUser && key === currentUser.id) return currentUser.name || currentUser.username;
-  var user = users.find(function (item) { return item.id === key; });
-  if (!user) return '';
-  return (user.name || user.username) + (user.active === false ? ' (מושבת)' : '');
+  var row = rabbaniyot.find(function (item) { return item.id === key; });
+  if (row) return row.name + (row.active === false ? ' (לא פעילה)' : '');
+  var lead = leads.find(function (item) { return item.rabbanit === key && item.rabbanitName; });
+  return lead ? lead.rabbanitName : '';
+}
+function rabbanitCell(lead) {
+  if (!lead.rabbanit) return (isAdmin() || isCallCenter()) ? 'ליד כללי' : '-';
+  return rabbanitPlain(lead.rabbanit) || 'רבנית';
 }
 function parseDate(value) {
   var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -404,7 +436,7 @@ function setVal(id, value) {
 function canOpenTab(name) {
   if (name === 'calendar') return isAdmin() || isActivist() || isLeadClerk();
   if (name === 'leads' || name === 'whatsapp') return isAdmin() || isLeadClerk();
-  if (name === 'reports' || name === 'users') return isAdmin();
+  if (name === 'reports' || name === 'users' || name === 'rabbaniyot') return isAdmin();
   return false;
 }
 function defaultTab() {
@@ -420,6 +452,8 @@ function applyRoleUI() {
 async function reloadData() {
   leads = await ZoharData.listLeads();
   users = await ZoharData.listUsers();
+  try { rabbaniyot = await ZoharData.listRabbaniyot(); }
+  catch (err) { rabbaniyot = []; }
 }
 function updateLocalImportButton() {
   var button = document.getElementById('btnLocalImport');
@@ -459,6 +493,7 @@ async function doLogout() {
   currentUser = null;
   leads = [];
   users = [];
+  rabbaniyot = [];
   waQueue = [];
   document.body.dataset.role = '';
   document.getElementById('loginPass').value = '';
@@ -470,12 +505,15 @@ async function doLogout() {
   document.getElementById('reportsContainer').textContent = '';
   document.getElementById('roiBox').textContent = '';
   document.getElementById('usersList').innerHTML = '';
+  var rabbaniyotBody = document.getElementById('rabbaniyotList');
+  if (rabbaniyotBody) rabbaniyotBody.innerHTML = '';
   document.getElementById('weeklyReport').textContent = '';
   document.getElementById('leadForm').reset();
   closeLeadModal();
   closeUserModal();
   closeEventModal();
   closeOwnPassword();
+  closeRabbaniyaModal();
   closeSheetsModal();
 }
 function switchTab(name, ev) {
@@ -486,7 +524,7 @@ function switchTab(name, ev) {
     ? ev.currentTarget
     : document.querySelector('.tab[data-tab="' + name + '"]');
   if (btn && btn.classList) btn.classList.add('active');
-  ['leads', 'reports', 'calendar', 'whatsapp', 'users'].forEach(function (panel) {
+  ['leads', 'reports', 'calendar', 'whatsapp', 'users', 'rabbaniyot'].forEach(function (panel) {
     var el = document.getElementById('panel-' + panel);
     if (el) el.classList.toggle('hidden', panel !== name);
   });
@@ -494,6 +532,7 @@ function switchTab(name, ev) {
   if (name === 'reports') renderReports();
   if (name === 'calendar') renderCalendar();
   if (name === 'users') renderUsers();
+  if (name === 'rabbaniyot') renderRabbaniyot();
   if (name === 'whatsapp') {
     var template = document.getElementById('waTemplate');
     if (template && !template.value) loadTemplate();
@@ -522,50 +561,39 @@ function fillRabbanitFilter() {
   if (!select) return;
   if (!isAdmin() && !isCallCenter()) { select.innerHTML = '<option value="">כל הרבניות</option>'; return; }
   var current = select.value;
-  var keys = [];
-  users.filter(function (user) { return user.role === 'rabbanit'; }).forEach(function (user) {
-    if (keys.indexOf(user.id) < 0) keys.push(user.id);
-  });
-  leads.forEach(function (lead) {
-    if (lead.rabbanit && keys.indexOf(lead.rabbanit) < 0) keys.push(lead.rabbanit);
-  });
-  var html = '<option value="">כל הרבניות</option>';
-  keys.forEach(function (key) {
-    html += '<option value="' + esc(key) + '">' + esc(rabbanitPlain(key)) + '</option>';
+  var html = '<option value="">כל הרבניות</option><option value="general">לידים כלליים</option>';
+  rabbaniyot.forEach(function (row) {
+    html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.active === false ? ' (לא פעילה)' : '') + '</option>';
   });
   select.innerHTML = html;
-  if (current === '' || keys.indexOf(current) >= 0) select.value = current;
+  if (current === '' || current === 'general' || rabbaniyot.some(function (row) { return row.id === current; })) select.value = current;
 }
 function fillWaFilter() {
   var select = document.getElementById('waRabbanitFilter');
   if (!select) return;
   if (!isAdmin()) { select.innerHTML = '<option value="">כל הרבניות / כל החוגים</option>'; return; }
   var current = select.value;
-  var html = '<option value="">כל הרבניות / כל החוגים</option>';
-  users.filter(function (user) { return user.role === 'rabbanit'; }).forEach(function (user) {
-    html += '<option value="' + esc(user.id) + '">' + esc(user.name || user.username) + '</option>';
+  var html = '<option value="">כל הרבניות / כל החוגים</option><option value="general">לידים כלליים</option>';
+  rabbaniyot.filter(function (row) { return row.active !== false; }).forEach(function (row) {
+    html += '<option value="' + esc(row.id) + '">' + esc(row.name) + '</option>';
   });
   select.innerHTML = html;
   select.value = current;
 }
 function fillRabbanitSelect(select, selected) {
   var value = selected || '';
-  var options = isRabbanit()
-    ? [{ id: currentUser.id, name: currentUser.name, username: currentUser.username }]
-    : users.filter(function (user) {
-      return user.role === 'rabbanit' && (isAdmin() || user.active !== false);
-    });
-  var html = '<option value="">ללא שיוך</option>';
-  options.forEach(function (user) {
-    html += '<option value="' + esc(user.id) + '">' + esc(user.name || user.username) + '</option>';
+  var allowEmpty = !isActivist();
+  var options = rabbaniyot.filter(function (row) { return row.active !== false || row.id === value; });
+  var html = allowEmpty ? '<option value="">ללא רבנית (ליד כללי)</option>' : '';
+  options.forEach(function (row) {
+    html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.active === false ? ' (לא פעילה)' : '') + '</option>';
   });
-  var known = options.some(function (user) { return user.id === value; });
-  if (value && !known && (isAdmin() || isActivist())) {
-    html += '<option value="' + esc(value) + '">' + esc(rabbanitPlain(value)) + ' (שיוך ישן)</option>';
+  if (value && !options.some(function (row) { return row.id === value; })) {
+    html += '<option value="' + esc(value) + '">' + esc(rabbanitPlain(value) || 'רבנית') + ' (שיוך ישן)</option>';
   }
   select.innerHTML = html;
   select.value = value;
-  if (select.value !== value) select.value = '';
+  if (select.value !== value) select.value = allowEmpty ? '' : (options[0] ? options[0].id : '');
 }
 function renderLeads() {
   var body = document.getElementById('leadsBody');
@@ -574,6 +602,11 @@ function renderLeads() {
   var status = document.getElementById('filterStatus').value || '';
   var closed = document.getElementById('filterClassClosed').value || '';
   var rabbanit = (isAdmin() || isCallCenter()) ? (document.getElementById('filterRabbanit').value || '') : '';
+  function matchesRabbanit(lead) {
+    if (!rabbanit) return true;
+    if (rabbanit === 'general') return !lead.rabbanit;
+    return lead.rabbanit === rabbanit;
+  }
   var filtered = leads.filter(function (lead) {
     var name = String(lead.name || '').toLowerCase();
     var phone = String(lead.phone || '');
@@ -581,7 +614,7 @@ function renderLeads() {
     if (status && lead.status !== status) return false;
     if (closed === 'yes' && !lead.classClosed) return false;
     if (closed === 'no' && lead.classClosed) return false;
-    if (rabbanit && lead.rabbanit !== rabbanit) return false;
+    if (!matchesRabbanit(lead)) return false;
     return true;
   });
   body.innerHTML = filtered.map(function (lead) {
@@ -602,7 +635,7 @@ function renderLeads() {
       (isAdmin() ? '<td>₪' + esc(Math.round(Number(lead.cost) || 0)) + '</td>' : '') +
       '<td><span class="status ' + statusClass + '">' + esc(STATUS_TEXT[lead.status] || lead.status || '') + '</span></td>' +
       (isAdmin() && !isRabbanit() ? '<td>' + esc(lead.standingOrders || 0) + '</td><td>₪' + esc(Math.round(Number(lead.cash) || 0)) + '</td><td>' + esc(ORDER_TEXT[lead.orderStatus] || '-') + '</td>' : '') +
-      '<td>' + (lead.classClosed ? 'כן' : 'לא') + '</td><td>' + esc(rabbanitPlain(lead.rabbanit) || '-') + '</td><td>' +
+      '<td>' + (lead.classClosed ? 'כן' : 'לא') + '</td><td>' + esc(rabbanitCell(lead)) + '</td><td>' +
       esc(lead.eventDate ? formatDate(lead.eventDate) : '-') + '</td><td>' + actions + '</td></tr>';
   }).join('') || '<tr><td colspan="12" style="text-align:center;padding:2rem;">אין לידים</td></tr>';
   updateStats();
@@ -720,7 +753,7 @@ function renderUsers() {
     var actions = '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-id="' + esc(user.id) + '">עריכה</button>';
     if (!isSelf) actions += ' <button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" data-action="del" data-id="' + esc(user.id) + '">מחק</button>';
     return '<tr><td>' + esc(user.username) + '</td><td>' + esc(user.name) + '</td><td>' + esc(roleLabel(user.role)) + '</td><td>' +
-      (user.role === 'rabbanit' ? esc(user.rabbanitName || user.name) : '-') + '</td><td>' +
+      (user.role === 'rabbanit' ? esc((rabbaniyot.find(function (row) { return row.id === user.rabbaniyaId; }) || {}).name || '-') : '-') + '</td><td>' +
       (user.active === false ? 'מושבת' : 'פעיל') + '</td><td>' + esc(formatUserDate(user.createdAt)) + '</td><td>' + actions + '</td></tr>';
   }).join('');
   fillWaFilter();
@@ -937,7 +970,12 @@ function sendWA(id) {
 function sendWAToOpen() {
   if (!isAdmin() && !isLeadClerk()) return;
   var filter = isAdmin() ? (document.getElementById('waRabbanitFilter').value || '') : (isCallCenter() ? (document.getElementById('filterRabbanit').value || '') : '');
-  var targets = leads.filter(function (lead) { return lead.status === 'open' && (!filter || lead.rabbanit === filter); });
+  var targets = leads.filter(function (lead) {
+    if (lead.status !== 'open') return false;
+    if (!filter) return true;
+    if (filter === 'general') return !lead.rabbanit;
+    return lead.rabbanit === filter;
+  });
   if (!targets.length) { alert('אין לידים מתאימים'); return; }
   if (!confirm('לפתוח וואטסאפ ל-' + targets.length + ' לידים?')) return;
   var blocked = [];
@@ -1019,10 +1057,21 @@ async function syncSheets() {
     setTimeout(closeSheetsModal, 1200);
   } catch (err) { status.textContent = err.message || 'הסנכרון נכשל'; }
 }
+function fillUserRabbaniyaSelect(selected) {
+  var select = document.getElementById('newRabbaniyaId');
+  var html = '<option value="">בחרו רבנית</option>';
+  rabbaniyot.forEach(function (row) {
+    if (row.active === false && row.id !== selected) return;
+    var taken = row.profileId && row.id !== selected;
+    html += '<option value="' + esc(row.id) + '">' + esc(row.name) + (row.active === false ? ' (לא פעילה)' : '') + (taken ? ' (משויכת)' : '') + '</option>';
+  });
+  select.innerHTML = html;
+  select.value = selected || '';
+}
 function toggleRabbanitName() {
-  var show = document.getElementById('newRole').value === 'rabbanit' && document.getElementById('userModal').dataset.mode !== 'password';
+  var show = document.getElementById('newRole').value === 'rabbanit';
   document.getElementById('rabbanitNameGroup').style.display = show ? '' : 'none';
-  document.getElementById('newRabbanitName').required = show;
+  document.getElementById('newRabbaniyaId').required = show;
 }
 function setUserMode(mode) {
   var modal = document.getElementById('userModal');
@@ -1045,6 +1094,7 @@ function openAddUser() {
   document.getElementById('userModalTitle').textContent = 'הוספת משתמש';
   setUserMode('create');
   document.getElementById('newUserActive').checked = true;
+  fillUserRabbaniyaSelect('');
   document.getElementById('userModal').classList.add('active');
 }
 function editUser(id) {
@@ -1058,8 +1108,8 @@ function editUser(id) {
   setVal('newPassword', '');
   setVal('newDisplayName', user.name || '');
   setVal('newRole', user.role === 'admin' || user.role === 'rabbanit' || user.role === 'call_center' ? user.role : 'activist');
-  setVal('newRabbanitName', user.rabbanitName || '');
   document.getElementById('newUserActive').checked = user.active !== false;
+  fillUserRabbaniyaSelect(user.rabbaniyaId || '');
   toggleRabbanitName();
   document.getElementById('userModalTitle').textContent = 'עריכת משתמש';
   document.getElementById('userModal').classList.add('active');
@@ -1117,7 +1167,7 @@ async function saveUserForm() {
       password: password,
       name: document.getElementById('newDisplayName').value.trim(),
       role: document.getElementById('newRole').value,
-      rabbanitName: document.getElementById('newRabbanitName').value.trim(),
+      rabbaniyaId: document.getElementById('newRabbaniyaId').value,
       active: document.getElementById('newUserActive').checked,
       create: mode === 'create'
     });
@@ -1144,6 +1194,60 @@ async function deleteUser(userId) {
     renderUsers();
   } catch (err) { alert(err.message || 'המחיקה נכשלה'); }
 }
+function renderRabbaniyot() {
+  var body = document.getElementById('rabbaniyotList');
+  if (!body) return;
+  if (!isAdmin()) { body.innerHTML = ''; return; }
+  body.innerHTML = rabbaniyot.map(function (row) {
+    return '<tr><td>' + esc(row.name) + '</td><td>' + (row.active === false ? 'מושבת' : 'פעילה') + '</td><td>' +
+      (row.profileId ? 'משויכת' : 'לא משויכת') + '</td><td>' +
+      '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-id="' + esc(row.id) + '">עריכה</button> ' +
+      '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" data-action="del" data-id="' + esc(row.id) + '">מחק</button>' +
+      '</td></tr>';
+  }).join('') || '<tr><td colspan="4" style="text-align:center;padding:1rem;">אין רבניות</td></tr>';
+}
+function openRabbaniyaModal(id) {
+  if (!isAdmin()) return;
+  var row = id ? rabbaniyot.find(function (item) { return item.id === id; }) : null;
+  document.getElementById('rabbaniyaForm').reset();
+  document.getElementById('rabbaniyaId').value = row ? row.id : '';
+  document.getElementById('rabbaniyaName').value = row ? row.name : '';
+  document.getElementById('rabbaniyaActive').checked = row ? row.active !== false : true;
+  document.getElementById('rabbaniyaModalTitle').textContent = row ? 'עריכת רבנית' : 'רבנית חדשה';
+  document.getElementById('rabbaniyaModal').classList.add('active');
+}
+function closeRabbaniyaModal() { document.getElementById('rabbaniyaModal').classList.remove('active'); }
+function onSaveRabbaniya(e) {
+  e.preventDefault();
+  saveRabbaniyaForm();
+  return false;
+}
+async function saveRabbaniyaForm() {
+  if (!isAdmin()) return;
+  var id = document.getElementById('rabbaniyaId').value;
+  try {
+    await ZoharData.saveRabbaniya({
+      id: id || undefined,
+      name: document.getElementById('rabbaniyaName').value.trim(),
+      active: document.getElementById('rabbaniyaActive').checked,
+      create: !id
+    });
+    await reloadData();
+    closeRabbaniyaModal();
+    renderRabbaniyot();
+    if (!document.getElementById('panel-leads').classList.contains('hidden')) renderLeads();
+  } catch (err) { alert(err.message || 'השמירה נכשלה'); }
+}
+async function deleteRabbaniya(id) {
+  if (!isAdmin()) return;
+  if (!confirm('למחוק את הרבנית? לידים משויכים יהפכו ללידים כלליים.')) return;
+  try {
+    await ZoharData.deleteRabbaniya(id);
+    await reloadData();
+    renderRabbaniyot();
+    if (!document.getElementById('panel-leads').classList.contains('hidden')) renderLeads();
+  } catch (err) { alert(err.message || 'המחיקה נכשלה'); }
+}
 document.querySelector('.tabs').addEventListener('click', function (e) {
   var btn = e.target.closest('.tab');
   if (!btn) return;
@@ -1166,6 +1270,13 @@ document.getElementById('calendarContainer').addEventListener('click', function 
   var id = btn.getAttribute('data-id');
   if (btn.getAttribute('data-action') === 'event') openEventModal(id);
   else if (btn.getAttribute('data-action') === 'edit') openLeadModal(id);
+});
+document.getElementById('rabbaniyotList').addEventListener('click', function (e) {
+  var btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  var id = btn.getAttribute('data-id');
+  if (btn.getAttribute('data-action') === 'edit') openRabbaniyaModal(id);
+  else if (btn.getAttribute('data-action') === 'del') deleteRabbaniya(id);
 });
 document.getElementById('usersList').addEventListener('click', function (e) {
   var btn = e.target.closest('[data-action]');
@@ -1193,6 +1304,7 @@ ZoharData.onChange(function () {
     else if (name === 'calendar') renderCalendar();
     else if (name === 'reports') renderReports();
     else if (name === 'users') renderUsers();
+    else if (name === 'rabbaniyot') renderRabbaniyot();
     else if (name === 'whatsapp') fillWaFilter();
   }).catch(function () {});
 });

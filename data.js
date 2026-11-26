@@ -118,7 +118,7 @@
       username: row.username,
       name: row.display_name || row.name || row.username,
       role: row.role,
-      rabbanitName: row.rabbanit_name || '',
+      rabbaniyaId: row.rabbaniya_id || '',
       active: row.active !== false,
       createdAt: row.created_at || ''
     };
@@ -131,12 +131,12 @@
       username: profile.username,
       name: profile.name,
       role: profile.role,
-      rabbanitName: profile.rabbanitName || ''
+      rabbaniyaId: profile.rabbaniyaId || ''
     };
   }
 
   async function loadProfile(userId) {
-    var res = await client.from('profiles').select('id, username, display_name, role, rabbanit_name').eq('id', userId).single();
+    var res = await client.from('profiles').select('id, username, display_name, role').eq('id', userId).single();
     if (res.error || !res.data) {
       profile = null;
       throw new Error('הפרופיל לא נמצא');
@@ -164,6 +164,12 @@
     return finance || {};
   }
 
+  function joinedRabbanitName(row) {
+    var rel = row.rabbaniyot;
+    if (Array.isArray(rel)) rel = rel[0];
+    return rel && rel.name || '';
+  }
+
   function classResultsOf(row) {
     var results = row.lead_class_results;
     if (Array.isArray(results)) results = results[0];
@@ -181,7 +187,8 @@
         source: row.source || '',
         status: row.status || 'open',
         classClosed: closed,
-        rabbanit: row.assigned_rabbanit_id || '',
+        rabbanit: row.rabbanit_ref || '',
+        rabbanitName: joinedRabbanitName(row),
         eventDate: row.event_date || '',
         notes: row.notes || '',
         createdAt: row.created_at || '',
@@ -196,7 +203,8 @@
       phone: row.phone || '',
       status: row.status || 'open',
       classClosed: closed,
-      rabbanit: row.assigned_rabbanit_id || '',
+      rabbanit: row.rabbanit_ref || '',
+      rabbanitName: joinedRabbanitName(row),
       eventDate: row.event_date || '',
       standingOrders: num(results.standing_orders, 0),
       cash: num(results.cash, 0)
@@ -217,15 +225,16 @@
     return lead;
   }
 
-  function matchRabbanit(value, profiles) {
+  function matchRabbanit(value, catalog) {
     var text = String(value || '').trim();
     if (!text) return null;
-    if (UUID.test(text)) return text;
-    var lower = text.toLowerCase();
-    var found = (profiles || []).find(function (person) {
-      return person.role === 'rabbanit' && (person.id === text || person.username === lower || person.name === text || person.rabbanitName === text);
-    });
-    return found ? found.id : null;
+    if (!catalog) return UUID.test(text) ? text : null;
+    if (UUID.test(text)) {
+      var byId = catalog.find(function (row) { return row.id === text; });
+      return byId ? byId.id : null;
+    }
+    var byName = catalog.find(function (row) { return row.name === text; });
+    return byName ? byName.id : null;
   }
 
   function payloadFrom(input, profiles) {
@@ -247,7 +256,7 @@
       source: String(input.source || '').trim(),
       status: status,
       event_date: dateOrNull(input.eventDate),
-      assigned_rabbanit_id: assigned,
+      rabbanit_ref: assigned,
       notes: String(input.notes == null ? '' : input.notes)
     };
   }
@@ -293,6 +302,9 @@
     code = String(code || '');
     var messages = {
       username_taken: 'שם המשתמש כבר תפוס',
+      rabbaniya_id_required: 'יש לבחור רבנית מהרשימה',
+      rabbaniya_already_linked: 'הרבנית הזו כבר משויכת למשתמש אחר',
+      rabbaniya_not_found: 'הרבנית לא נמצאה',
       cannot_change_own_role: 'אי אפשר לשנות את התפקיד של עצמך',
       cannot_disable_self: 'אי אפשר להשבית את החשבון של עצמך',
       cannot_delete_self: 'אי אפשר למחוק את המשתמש המחובר',
@@ -510,6 +522,7 @@
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_class_results' }, scheduleNotify)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_history' }, scheduleNotify)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, scheduleNotify)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'rabbaniyot' }, scheduleNotify)
       .subscribe();
   }
 
@@ -570,8 +583,8 @@
     await init();
     requireUser();
     var columns = profile.role === 'activist'
-      ? 'id,name,phone,status,event_date,assigned_rabbanit_id,home_class_closed'
-      : 'id,name,phone,email,source,status,event_date,assigned_rabbanit_id,notes,created_at,home_class_closed';
+      ? 'id,name,phone,status,event_date,rabbanit_ref,home_class_closed,rabbaniyot(name,active)'
+      : 'id,name,phone,email,source,status,event_date,rabbanit_ref,notes,created_at,home_class_closed,rabbaniyot(name,active)';
     var res = await client.from('leads').select(columns).order('created_at', { ascending: false });
     if (res.error && columns.indexOf('home_class_closed') >= 0) {
       res = await client.from('leads').select(columns.replace(',home_class_closed', '')).order('created_at', { ascending: false });
@@ -621,9 +634,9 @@
     requireUser();
     if (profile.role === 'rabbanit') return [];
     if (profile.role === 'call_center') {
-      var directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name, active');
+      var directory = await client.from('profiles').select('id, username, display_name, role, active');
       if (directory.error) {
-        directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name');
+        directory = await client.from('profiles').select('id, username, display_name, role');
       }
       if (directory.error) return [];
       return (directory.data || []).map(publicUser).filter(function (user) {
@@ -636,9 +649,9 @@
         return String(a.name || '').localeCompare(String(b.name || ''), 'he');
       });
     }
-    var res = await client.from('profiles').select('id, username, display_name, role, rabbanit_name, active').eq('role', 'rabbanit');
+    var res = await client.from('profiles').select('id, username, display_name, role, active').eq('role', 'rabbanit');
     if (res.error) {
-      res = await client.from('profiles').select('id, username, display_name, role, rabbanit_name').eq('role', 'rabbanit');
+      res = await client.from('profiles').select('id, username, display_name, role').eq('role', 'rabbanit');
     }
     if (res.error) throw translate(res.error);
     return (res.data || []).map(publicUser).filter(function (user) { return user.active !== false; });
@@ -680,8 +693,13 @@
       if (!Number.isFinite(cash) || cash < 0) throw new Error('סכום המזומן אינו תקין');
       var assigned = String(patch && patch.rabbanit || '').trim();
       if (assigned && !UUID.test(assigned)) throw new Error('בחרו רבנית מהרשימה');
+      if (!assigned) throw new Error('בחרו רבנית מהרשימה');
+      var catalog = await listRabbaniyot();
+      if (!catalog.some(function (row) { return row.id === assigned && row.active !== false; })) {
+        throw new Error('בחרו רבנית פעילה מהרשימה');
+      }
       var res = await client.from('leads').update({
-        assigned_rabbanit_id: assigned || null
+        rabbanit_ref: assigned
       }).eq('id', id).select('id');
       if (res.error) throw translate(res.error);
       if (!res.data || !res.data.length) throw new Error('האירוע לא נמצא');
@@ -711,11 +729,11 @@
       var allowedRoles = { admin: true, activist: true, rabbanit: true, call_center: true };
       var role = input && allowedRoles[input.role] ? input.role : '';
       var password = input && input.password ? String(input.password) : '';
-      var rabbanitName = String(input && input.rabbanitName || '').trim();
+      var rabbaniyaId = String(input && input.rabbaniyaId || '').trim();
       var active = !(input && input.active === false);
       if (!validUsername(username)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
       if (!name || !role) throw new Error('מלאו את השדות החובה');
-      if (role === 'rabbanit' && !rabbanitName) throw new Error('מלאו את שם הרבנית');
+      if (role === 'rabbanit' && !UUID.test(rabbaniyaId)) throw new Error('יש לבחור רבנית מהרשימה');
       if (input && input.create) {
         if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
         await adminUsers({
@@ -725,7 +743,7 @@
           display_name: name,
           role: role,
           active: active,
-          rabbanit_name: role === 'rabbanit' ? rabbanitName : undefined
+          rabbaniya_id: role === 'rabbanit' ? rabbaniyaId : undefined
         });
         return;
       }
@@ -737,7 +755,7 @@
         display_name: name,
         role: role,
         active: active,
-        rabbanit_name: role === 'rabbanit' ? rabbanitName : null
+        rabbaniya_id: role === 'rabbanit' ? rabbaniyaId : null
       };
       if (password) {
         if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
@@ -768,7 +786,7 @@
     return enqueue(async function () {
       await init();
       requireAdmin();
-      var profiles = await listUsers();
+      var catalog = await listRabbaniyot();
       var existing = await client.from('leads').select('phone');
       if (existing.error) throw translate(existing.error);
       var seen = Object.create(null);
@@ -784,8 +802,8 @@
         var key = phoneKey(record.phone);
         if (key && seen[key]) { skipped++; continue; }
         if (key) seen[key] = true;
-        record.rabbanit = matchRabbanit(record.rabbanit, profiles) || '';
-        await insertLead(record, profiles);
+        record.rabbanit = matchRabbanit(record.rabbanit, catalog) || '';
+        await insertLead(record, catalog);
         added++;
       }
       return { added: added, skipped: skipped };
@@ -807,12 +825,9 @@
     await init();
     if (!profile || (profile.role !== 'admin' && profile.role !== 'rabbanit' && profile.role !== 'call_center')) throw new Error('אין הרשאה לבצע את הפעולה');
     var leads = await listLeads();
-    var profiles = (profile.role === 'admin' || profile.role === 'call_center') ? await listUsers() : [];
-    function rabbanitName(id) {
-      var person = profiles.find(function (item) { return item.id === id; });
-      if (person) return person.name || person.username;
-      if (profile.role === 'rabbanit' && id === profile.id) return profile.name;
-      return '';
+    function rabbanitName(lead) {
+      if (!lead.rabbanit) return '';
+      return lead.rabbanitName || '';
     }
     function statusLabel(status) {
       return { open: 'פתוח', closed: 'נסגר', 'not-closed': 'לא נסגר', cancelled: 'ביטל' }[status] || status || '';
@@ -825,12 +840,12 @@
     if (profile.role === 'admin') {
       header = ['שם', 'טלפון', 'אימייל', 'מקור', 'עלות', 'סטטוס', 'נסגר חוג בית', 'הוראות קבע', 'מזומן', 'סטטוס קבע', 'סכום חודשי', 'תרומה חד-פעמית', 'עלות חוג', 'תאריך התחלת הוראת קבע', 'רבנית', 'תאריך חוג', 'הערות'];
       lines = leads.map(function (lead) {
-        return [lead.name, lead.phone, lead.email, lead.source, lead.cost, statusLabel(lead.status), lead.classClosed ? 'כן' : 'לא', lead.standingOrders, lead.cash, orderLabel(lead.orderStatus), lead.monthlyAmount, lead.oneTime, lead.eventCost, lead.orderStart, rabbanitName(lead.rabbanit), lead.eventDate, lead.notes];
+        return [lead.name, lead.phone, lead.email, lead.source, lead.cost, statusLabel(lead.status), lead.classClosed ? 'כן' : 'לא', lead.standingOrders, lead.cash, orderLabel(lead.orderStatus), lead.monthlyAmount, lead.oneTime, lead.eventCost, lead.orderStart, rabbanitName(lead), lead.eventDate, lead.notes];
       });
     } else {
       header = ['שם', 'טלפון', 'אימייל', 'מקור', 'סטטוס', 'נסגר חוג בית', 'רבנית', 'תאריך חוג', 'הערות'];
       lines = leads.map(function (lead) {
-        return [lead.name, lead.phone, lead.email, lead.source, statusLabel(lead.status), lead.classClosed ? 'כן' : 'לא', rabbanitName(lead.rabbanit), lead.eventDate, lead.notes];
+        return [lead.name, lead.phone, lead.email, lead.source, statusLabel(lead.status), lead.classClosed ? 'כן' : 'לא', rabbanitName(lead), lead.eventDate, lead.notes];
       });
     }
     return '\uFEFF' + [header].concat(lines).map(function (row) {
@@ -872,6 +887,57 @@
     });
   }
 
+  async function listRabbaniyot() {
+    await init();
+    requireUser();
+    var res = await client.from('rabbaniyot').select('id,name,active,profile_id,created_at').order('name');
+    if (res.error) throw translate(res.error);
+    return (res.data || []).map(function (row) {
+      return {
+        id: row.id,
+        name: row.name || '',
+        active: row.active !== false,
+        profileId: row.profile_id || '',
+        createdAt: row.created_at || ''
+      };
+    });
+  }
+
+  function saveRabbaniya(input) {
+    return enqueue(async function () {
+      await init();
+      requireAdmin();
+      var name = String(input && input.name || '').trim();
+      if (!name) throw new Error('מלאו את שם הרבנית');
+      var active = !(input && input.active === false);
+      if (input && input.create) {
+        var inserted = await client.from('rabbaniyot').insert({ name: name, active: active }).select('id').single();
+        if (inserted.error) {
+          if (inserted.error.code === '23505' || /duplicate|unique/i.test(inserted.error.message || '')) throw new Error('שם הרבנית כבר קיים');
+          throw translate(inserted.error);
+        }
+        return inserted.data.id;
+      }
+      if (!input || !input.id) throw new Error('הרבנית לא נמצאה');
+      var updated = await client.from('rabbaniyot').update({ name: name, active: active }).eq('id', input.id).select('id');
+      if (updated.error) {
+        if (updated.error.code === '23505' || /duplicate|unique/i.test(updated.error.message || '')) throw new Error('שם הרבנית כבר קיים');
+        throw translate(updated.error);
+      }
+      if (!updated.data || !updated.data.length) throw new Error('הרבנית לא נמצאה');
+    });
+  }
+
+  function deleteRabbaniya(id) {
+    return enqueue(async function () {
+      await init();
+      requireAdmin();
+      var res = await client.from('rabbaniyot').delete().eq('id', id).select('id');
+      if (res.error) throw translate(res.error);
+      if (!res.data || !res.data.length) throw new Error('הרבנית לא נמצאה');
+    });
+  }
+
   global.ZoharData = {
     init: init,
     login: login,
@@ -879,6 +945,9 @@
     session: currentSession,
     listLeads: listLeads,
     listUsers: listUsers,
+    listRabbaniyot: listRabbaniyot,
+    saveRabbaniya: saveRabbaniya,
+    deleteRabbaniya: deleteRabbaniya,
     saveLead: saveLead,
     saveEvent: saveEvent,
     deleteLead: deleteLead,
