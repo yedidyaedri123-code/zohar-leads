@@ -60,10 +60,10 @@ th { background: #f8fafc; }
 .install-bar { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; display: flex; gap: 0.6rem; align-items: center; justify-content: center; flex-wrap: wrap; background: #fff; border-top: 1px solid #e2e8f0; padding: 0.65rem calc(0.8rem + env(safe-area-inset-right)) calc(0.65rem + env(safe-area-inset-bottom)) calc(0.8rem + env(safe-area-inset-left)); box-shadow: 0 -2px 10px rgba(15,23,42,.06); text-align: center; }
 .install-ios { margin: 0; color: #334155; font-size: 0.92rem; }
 body.has-install { padding-bottom: calc(4.6rem + env(safe-area-inset-bottom)); }
-body[data-role="operator"] .tab-leads,
-body[data-role="operator"] .tab-reports,
-body[data-role="operator"] .tab-wa,
-body[data-role="operator"] .tab-users,
+body[data-role="activist"] .tab-leads,
+body[data-role="activist"] .tab-reports,
+body[data-role="activist"] .tab-wa,
+body[data-role="activist"] .tab-users,
 body[data-role="rabbanit"] .tab-reports,
 body[data-role="rabbanit"] .tab-users,
 body:not([data-role="admin"]) .admin-only,
@@ -89,7 +89,8 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]) .export-allowed { disp
       <img src="https://zohar-harashbi.co.il/wp-content/uploads/cropped-%D7%AA%D7%9E%D7%95%D7%A0%D7%94_%D7%A9%D7%9C_WhatsApp__2025-07-30_%D7%91%D7%A9%D7%A2%D7%94_10.04.33_da67cc47-removebg-preview.png" alt="לוגו" style="height:80px; width:auto;" onerror="this.onerror=null;this.src='icons/icon-192.png';">
     </div>
     <form id="loginForm" onsubmit="return onLogin(event);">
-      <div class="form-group"><label>שם משתמש</label><input type="text" id="loginUser" autocomplete="username" placeholder="שם משתמש"></div>
+      <div class="form-group"><label>שם משתמש</label><input type="text" id="loginUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="username"></div>
+      <p style="font-size:0.8rem; color:#64748b; margin:-0.4rem 0 0.8rem;">שם משתמש באנגלית</p>
       <div class="form-group"><label>סיסמה</label><input type="password" id="loginPass" autocomplete="current-password" placeholder="סיסמה"></div>
       <button class="btn" type="submit" style="width:100%;">כניסה</button>
     </form>
@@ -102,7 +103,10 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]) .export-allowed { disp
       <h1 style="margin:0; font-size:1.3rem;">לידים</h1>
       <small id="userInfo"></small>
     </div>
-    <button type="button" class="btn" style="background:transparent; border:1px solid white;" onclick="doLogout()">יציאה</button>
+    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+      <button type="button" class="btn" style="background:transparent; border:1px solid white;" onclick="openOwnPassword()">הסיסמה שלי</button>
+      <button type="button" class="btn" style="background:transparent; border:1px solid white;" onclick="doLogout()">יציאה</button>
+    </div>
   </div>
   <div class="container">
     <div class="tabs">
@@ -137,6 +141,7 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]) .export-allowed { disp
         <button type="button" class="btn btn-outline admin-only" id="btnImport" onclick="document.getElementById('csvFile').click()">ייבוא CSV</button>
         <input type="file" id="csvFile" accept=".csv,text/csv" class="hidden" onchange="importCSVFile(event)">
         <button type="button" class="btn btn-outline export-allowed" id="btnExport" onclick="exportCSV()">ייצוא</button>
+        <button type="button" class="btn admin-only hidden" id="btnLocalImport" onclick="importLocalLeads()">ייבוא מהמכשיר הזה</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -273,10 +278,11 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]) .export-allowed { disp
       <div class="form-group" id="displayNameGroup"><label>שם להצגה</label><input id="newDisplayName"></div>
       <div class="form-group" id="roleGroup"><label>תפקיד</label>
         <select id="newRole">
-          <option value="operator">פעיל</option>
+          <option value="activist">פעיל</option>
           <option value="rabbanit">רבנית</option>
         </select>
       </div>
+      <div class="form-group" id="rabbanitNameGroup"><label>שם הרבנית לשיוך</label><input id="newRabbanitName" placeholder="השם שמופיע על החוג"></div>
       <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
         <button type="button" class="btn" style="background:#64748b;" onclick="closeUserModal()">ביטול</button>
         <button type="submit" class="btn">שמירה</button>
@@ -297,11 +303,26 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]) .export-allowed { disp
   </div>
 </div>
 
+<div class="modal" id="passwordModal">
+  <div class="modal-content">
+    <h3>הסיסמה שלי</h3>
+    <form id="ownPasswordForm" onsubmit="return onOwnPassword(event);">
+      <div class="form-group"><label>סיסמה חדשה</label><input id="ownPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></div>
+      <div class="form-group"><label>אימות סיסמה</label><input id="ownPassword2" type="password" minlength="8" maxlength="72" autocomplete="new-password" required></div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <button type="button" class="btn" style="background:#64748b;" onclick="closeOwnPassword()">ביטול</button>
+        <button type="submit" class="btn">שמירה</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="installBar" class="install-bar hidden" role="region" aria-label="התקנת האפליקציה">
   <p id="installIos" class="install-ios hidden">באייפון: לחצו על כפתור השיתוף ואז „הוסף למסך הבית”.</p>
   <button type="button" id="installBtn" class="btn hidden">התקן את האפליקציה</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="data.js"></script>
 <script>
 'use strict';
@@ -318,7 +339,10 @@ var currentUser = null;
 var waQueue = [];
 var deferredInstall = null;
 var initError = null;
-var appReady = ZoharData.init().catch(function (err) { initError = err; });
+var appReady = ZoharData.init().then(function () {
+  var existing = ZoharData.session();
+  if (existing) return enterApp(existing);
+}).catch(function (err) { initError = err; });
 
 function esc(value) {
   return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
@@ -326,19 +350,19 @@ function esc(value) {
   });
 }
 function isAdmin() { return !!(currentUser && currentUser.role === 'admin'); }
-function isActivist() { return !!(currentUser && currentUser.role === 'operator'); }
+function isActivist() { return !!(currentUser && currentUser.role === 'activist'); }
 function isRabbanit() { return !!(currentUser && currentUser.role === 'rabbanit'); }
 function roleLabel(role) {
   if (role === 'admin') return 'מנהל';
-  if (role === 'operator') return 'פעיל';
+  if (role === 'activist') return 'פעיל';
   if (role === 'rabbanit') return 'רבנית';
   return 'משתמש';
 }
 function rabbanitPlain(key) {
   if (!key) return '';
-  if (currentUser && key === currentUser.username) return currentUser.name || key;
-  var user = users.find(function (item) { return item.username === key; });
-  return user ? (user.name || key) : String(key);
+  if (currentUser && key === currentUser.id) return currentUser.name || currentUser.username;
+  var user = users.find(function (item) { return item.id === key; });
+  return user ? (user.name || user.username) : '';
 }
 function parseDate(value) {
   var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -386,6 +410,22 @@ async function reloadData() {
   leads = await ZoharData.listLeads();
   users = await ZoharData.listUsers();
 }
+function updateLocalImportButton() {
+  var button = document.getElementById('btnLocalImport');
+  if (!button) return;
+  var show = isAdmin() && ZoharData.hasDeviceLeads();
+  button.classList.toggle('hidden', !show);
+}
+async function enterApp(user) {
+  currentUser = user;
+  await reloadData();
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  applyRoleUI();
+  updateLocalImportButton();
+  switchTab(defaultTab());
+  loadTemplate();
+}
 function onLogin(e) {
   e.preventDefault();
   doLogin();
@@ -400,14 +440,8 @@ async function doLogin() {
   try { user = await ZoharData.login(username, password); }
   catch (err) { alert(err.message || 'שגיאה בכניסה'); return; }
   if (!user) { alert('שם משתמש או סיסמה שגויים'); return; }
-  currentUser = user;
-  try { await reloadData(); }
-  catch (err) { alert(err.message || 'שגיאה בטעינת הנתונים'); return; }
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  applyRoleUI();
-  switchTab(defaultTab());
-  loadTemplate();
+  try { await enterApp(user); }
+  catch (err) { alert(err.message || 'שגיאה בטעינת הנתונים'); }
 }
 async function doLogout() {
   await ZoharData.logout();
@@ -430,6 +464,7 @@ async function doLogout() {
   closeLeadModal();
   closeUserModal();
   closeEventModal();
+  closeOwnPassword();
   closeSheetsModal();
 }
 function switchTab(name, ev) {
@@ -478,7 +513,7 @@ function fillRabbanitFilter() {
   var current = select.value;
   var keys = [];
   users.filter(function (user) { return user.role === 'rabbanit'; }).forEach(function (user) {
-    if (keys.indexOf(user.username) < 0) keys.push(user.username);
+    if (keys.indexOf(user.id) < 0) keys.push(user.id);
   });
   leads.forEach(function (lead) {
     if (lead.rabbanit && keys.indexOf(lead.rabbanit) < 0) keys.push(lead.rabbanit);
@@ -497,7 +532,7 @@ function fillWaFilter() {
   var current = select.value;
   var html = '<option value="">כל הרבניות / כל החוגים</option>';
   users.filter(function (user) { return user.role === 'rabbanit'; }).forEach(function (user) {
-    html += '<option value="' + esc(user.username) + '">' + esc(user.name || user.username) + '</option>';
+    html += '<option value="' + esc(user.id) + '">' + esc(user.name || user.username) + '</option>';
   });
   select.innerHTML = html;
   select.value = current;
@@ -505,13 +540,13 @@ function fillWaFilter() {
 function fillRabbanitSelect(select, selected) {
   var value = selected || '';
   var options = isRabbanit()
-    ? [{ username: currentUser.username, name: currentUser.name }]
+    ? [{ id: currentUser.id, name: currentUser.name, username: currentUser.username }]
     : users.filter(function (user) { return user.role === 'rabbanit'; });
   var html = '<option value="">ללא שיוך</option>';
   options.forEach(function (user) {
-    html += '<option value="' + esc(user.username) + '">' + esc(user.name || user.username) + '</option>';
+    html += '<option value="' + esc(user.id) + '">' + esc(user.name || user.username) + '</option>';
   });
-  var known = options.some(function (user) { return user.username === value; });
+  var known = options.some(function (user) { return user.id === value; });
   if (value && !known && (isAdmin() || isActivist())) {
     html += '<option value="' + esc(value) + '">' + esc(rabbanitPlain(value)) + ' (שיוך ישן)</option>';
   }
@@ -663,12 +698,11 @@ function renderUsers() {
   var body = document.getElementById('usersList');
   if (!isAdmin()) { body.innerHTML = ''; return; }
   body.innerHTML = users.map(function (user) {
-    var protectedAdmin = user.role === 'admin' || user.username === 'מנהל';
-    var actions = protectedAdmin
-      ? '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="pw" data-key="' + esc(user.username) + '">שינוי סיסמה</button>'
-      : '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-key="' + esc(user.username) + '">עריכה</button> <button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" data-action="del" data-key="' + esc(user.username) + '">מחק</button>';
+    var actions = user.role === 'admin'
+      ? 'מנהל'
+      : '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-id="' + esc(user.id) + '">עריכה</button> <button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" data-action="del" data-id="' + esc(user.id) + '">מחק</button>';
     return '<tr><td>' + esc(user.username) + '</td><td>' + esc(user.name) + '</td><td>' + esc(roleLabel(user.role)) + '</td><td>' +
-      (user.role === 'rabbanit' ? esc(user.name) : '-') + '</td><td>' + actions + '</td></tr>';
+      (user.role === 'rabbanit' ? esc(user.rabbanitName || user.name) : '-') + '</td><td>' + actions + '</td></tr>';
   }).join('');
   fillWaFilter();
 }
@@ -759,13 +793,8 @@ async function saveLead() {
       if (id && !existing) { alert('הליד לא נמצא'); return; }
       var status = fieldStr('leadStatus');
       var classClosed = document.getElementById('leadClassClosed').value === 'yes';
-      var history = existing && Array.isArray(existing.history) ? existing.history.slice() : [];
-      if (existing && existing.status !== status) {
-        history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser.name, change: 'סטטוס: ' + (STATUS_TEXT[existing.status] || existing.status) + ' → ' + (STATUS_TEXT[status] || status) });
-      }
-      if (existing && !!existing.classClosed !== classClosed) {
-        history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser.name, change: classClosed ? 'חוג בית נסגר' : 'חוג בית סומן כלא נסגר' });
-      }
+      if (classClosed) status = 'closed';
+      else if (status === 'closed') status = 'open';
       await ZoharData.saveLead({
         id: id || undefined,
         name: fieldStr('leadName'),
@@ -784,8 +813,7 @@ async function saveLead() {
         eventCost: fieldNum('leadEventCost'),
         rabbanit: fieldStr('leadRabbanit'),
         eventDate: fieldStr('leadEventDate'),
-        notes: fieldStr('leadNotes'),
-        history: history
+        notes: fieldStr('leadNotes')
       });
     } else { alert('אין הרשאה'); return; }
     await reloadData();
@@ -816,10 +844,8 @@ async function quickNote(id) {
   if (!lead) return;
   var note = prompt('הערה מהירה:', lead.notes || '');
   if (note === null) return;
-  var history = Array.isArray(lead.history) ? lead.history.slice() : [];
-  history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser.name, change: 'הערה עודכנה' });
   try {
-    await ZoharData.saveLead(Object.assign({}, lead, { notes: note, history: history }));
+    await ZoharData.saveLead(Object.assign({}, lead, { notes: note }));
     await reloadData();
     renderLeads();
   } catch (err) { alert(err.message || 'השמירה נכשלה'); }
@@ -962,48 +988,80 @@ async function syncSheets() {
     setTimeout(closeSheetsModal, 1200);
   } catch (err) { status.textContent = err.message || 'הסנכרון נכשל'; }
 }
+function toggleRabbanitName() {
+  var show = document.getElementById('newRole').value === 'rabbanit' && document.getElementById('userModal').dataset.mode !== 'password';
+  document.getElementById('rabbanitNameGroup').style.display = show ? '' : 'none';
+  document.getElementById('newRabbanitName').required = show;
+}
 function setUserMode(mode) {
   var modal = document.getElementById('userModal');
   modal.dataset.mode = mode;
-  var passwordOnly = mode === 'password';
-  document.getElementById('displayNameGroup').style.display = passwordOnly ? 'none' : '';
-  document.getElementById('roleGroup').style.display = passwordOnly ? 'none' : '';
+  document.getElementById('displayNameGroup').style.display = '';
+  document.getElementById('roleGroup').style.display = '';
   document.getElementById('newUsername').disabled = mode !== 'create';
   document.getElementById('newUsername').required = mode === 'create';
-  document.getElementById('newPassword').required = mode !== 'edit';
-  document.getElementById('newDisplayName').required = !passwordOnly;
-  document.getElementById('newPassword').placeholder = mode === 'edit' ? 'השאירו ריק כדי לא לשנות' : '';
+  document.getElementById('newPassword').required = mode === 'create';
+  document.getElementById('newPassword').minLength = 8;
+  document.getElementById('newPassword').maxLength = 72;
+  document.getElementById('newDisplayName').required = true;
+  document.getElementById('newPassword').placeholder = mode === 'edit' ? 'השאירו ריק כדי לא לשנות' : '8 עד 72 תווים';
+  toggleRabbanitName();
 }
 function openAddUser() {
   if (!isAdmin()) return;
   document.getElementById('userForm').reset();
+  delete document.getElementById('userModal').dataset.userId;
   document.getElementById('userModalTitle').textContent = 'הוספת משתמש';
   setUserMode('create');
   document.getElementById('userModal').classList.add('active');
 }
-function editUser(username) {
+function editUser(id) {
   if (!isAdmin()) return;
-  var user = users.find(function (item) { return item.username === username; });
+  var user = users.find(function (item) { return item.id === id; });
   if (!user || user.role === 'admin') return;
   document.getElementById('userForm').reset();
+  document.getElementById('userModal').dataset.userId = user.id;
   setUserMode('edit');
   setVal('newUsername', user.username);
   setVal('newPassword', '');
   setVal('newDisplayName', user.name || '');
-  setVal('newRole', user.role === 'rabbanit' ? 'rabbanit' : 'operator');
+  setVal('newRole', user.role === 'rabbanit' ? 'rabbanit' : 'activist');
+  setVal('newRabbanitName', user.rabbanitName || '');
+  toggleRabbanitName();
   document.getElementById('userModalTitle').textContent = 'עריכת משתמש';
   document.getElementById('userModal').classList.add('active');
 }
-function openPasswordModal(username) {
+function openOwnPassword() {
+  if (!currentUser) return;
+  document.getElementById('ownPasswordForm').reset();
+  document.getElementById('passwordModal').classList.add('active');
+}
+function closeOwnPassword() { document.getElementById('passwordModal').classList.remove('active'); }
+function onOwnPassword(e) {
+  e.preventDefault();
+  saveOwnPassword();
+  return false;
+}
+async function saveOwnPassword() {
+  var first = document.getElementById('ownPassword').value;
+  var second = document.getElementById('ownPassword2').value;
+  if (first !== second) { alert('הסיסמאות אינן תואמות'); return; }
+  try {
+    await ZoharData.changeOwnPassword(first);
+    closeOwnPassword();
+    alert('הסיסמה עודכנה');
+  } catch (err) { alert(err.message || 'השמירה נכשלה'); }
+}
+async function importLocalLeads() {
   if (!isAdmin()) return;
-  var user = users.find(function (item) { return item.username === username; });
-  if (!user) return;
-  document.getElementById('userForm').reset();
-  setUserMode('password');
-  setVal('newUsername', user.username);
-  setVal('newPassword', '');
-  document.getElementById('userModalTitle').textContent = 'שינוי סיסמה';
-  document.getElementById('userModal').classList.add('active');
+  if (!confirm('לייבא את הלידים השמורים במכשיר הזה לשרת? הפעולה חד-פעמית.')) return;
+  try {
+    var result = await ZoharData.importDeviceLeads();
+    await reloadData();
+    updateLocalImportButton();
+    renderLeads();
+    alert('יובאו ' + result.added + ' לידים' + (result.skipped ? '. דולגו ' + result.skipped + ' כפולים' : ''));
+  } catch (err) { alert(err.message || 'הייבוא נכשל'); }
 }
 function closeUserModal() {
   document.getElementById('userModal').classList.remove('active');
@@ -1020,29 +1078,27 @@ async function saveUserForm() {
   var username = document.getElementById('newUsername').value.trim();
   var password = document.getElementById('newPassword').value;
   try {
-    if (mode === 'password') {
-      await ZoharData.changePassword(username, password);
-      alert('הסיסמה עודכנה');
-    } else {
-      await ZoharData.saveUser({
-        username: username,
-        password: password,
-        name: document.getElementById('newDisplayName').value.trim(),
-        role: document.getElementById('newRole').value,
-        create: mode === 'create'
-      });
-    }
+    await ZoharData.saveUser({
+      id: document.getElementById('userModal').dataset.userId,
+      username: username,
+      password: password,
+      name: document.getElementById('newDisplayName').value.trim(),
+      role: document.getElementById('newRole').value,
+      rabbanitName: document.getElementById('newRabbanitName').value.trim(),
+      create: mode === 'create'
+    });
     await reloadData();
     closeUserModal();
     renderUsers();
+    updateLocalImportButton();
     if (!document.getElementById('panel-leads').classList.contains('hidden')) renderLeads();
   } catch (err) { alert(err.message || 'השמירה נכשלה'); }
 }
-async function deleteUser(username) {
+async function deleteUser(userId) {
   if (!isAdmin()) return;
   if (!confirm('למחוק את המשתמש?')) return;
   try {
-    await ZoharData.deleteUser(username);
+    await ZoharData.deleteUser(userId);
     await reloadData();
     renderUsers();
   } catch (err) { alert(err.message || 'המחיקה נכשלה'); }
@@ -1073,11 +1129,31 @@ document.getElementById('calendarContainer').addEventListener('click', function 
 document.getElementById('usersList').addEventListener('click', function (e) {
   var btn = e.target.closest('[data-action]');
   if (!btn) return;
-  var key = btn.getAttribute('data-key');
+  var id = btn.getAttribute('data-id');
   var action = btn.getAttribute('data-action');
-  if (action === 'edit') editUser(key);
-  else if (action === 'del') deleteUser(key);
-  else if (action === 'pw') openPasswordModal(key);
+  if (action === 'edit') editUser(id);
+  else if (action === 'del') deleteUser(id);
+});
+document.getElementById('leadStatus').addEventListener('change', function () {
+  setVal('leadClassClosed', this.value === 'closed' ? 'yes' : 'no');
+});
+document.getElementById('leadClassClosed').addEventListener('change', function () {
+  if (!isAdmin()) return;
+  if (this.value === 'yes') setVal('leadStatus', 'closed');
+  else if (document.getElementById('leadStatus').value === 'closed') setVal('leadStatus', 'open');
+});
+document.getElementById('newRole').addEventListener('change', toggleRabbanitName);
+ZoharData.onChange(function () {
+  if (!currentUser || document.querySelector('.modal.active')) return;
+  reloadData().then(function () {
+    var tab = document.querySelector('.tab.active');
+    var name = tab ? tab.getAttribute('data-tab') : '';
+    if (name === 'leads') renderLeads();
+    else if (name === 'calendar') renderCalendar();
+    else if (name === 'reports') renderReports();
+    else if (name === 'users') renderUsers();
+    else if (name === 'whatsapp') fillWaFilter();
+  }).catch(function () {});
 });
 function isStandalone() {
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;

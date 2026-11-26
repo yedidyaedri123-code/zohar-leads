@@ -1,5 +1,5 @@
 /* App-shell cache. CRM/API reads stay network-first and are not stored. */
-var CACHE = 'zohar-shell-v1';
+var CACHE = 'zohar-shell-v2';
 var SHELL = [
   '/',
   '/index.html',
@@ -40,13 +40,8 @@ function isDataRequest(url) {
   return false;
 }
 
-function networkFirstData(request) {
-  return fetch(request).catch(function () {
-    return caches.match(request).then(function (cached) {
-      if (cached) return cached;
-      return Promise.reject(new Error('offline'));
-    });
-  });
+function networkOnly(request) {
+  return fetch(request);
 }
 
 function networkFirstShell(request) {
@@ -80,7 +75,7 @@ function cacheFirst(request) {
 self.addEventListener('fetch', function (event) {
   var url = new URL(event.request.url);
   if (isDataRequest(url)) {
-    event.respondWith(networkFirstData(event.request));
+    event.respondWith(networkOnly(event.request));
     return;
   }
   if (url.origin !== self.location.origin) return;

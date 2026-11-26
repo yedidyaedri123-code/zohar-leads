@@ -1,24 +1,23 @@
 /**
  * ZoharData — the only module that reads or writes CRM data.
  *
- * This build stores leads and users in localStorage and hashes passwords
- * with SHA-256 (Web Crypto). The UI must call these methods and must not
- * touch localStorage itself.
+ * Users, leads, finance and history live in Supabase (Auth + RLS).
+ * localStorage is used only for the one-time device import of old leads
+ * and for the auth session that supabase-js keeps itself.
  *
- * To move to Supabase, replace this file and keep the same methods:
- *   init, login, logout, session, listLeads, listUsers,
- *   saveLead, saveEvent, deleteLead, saveUser, deleteUser,
- *   changePassword, importCsv, exportCsv.
- * Supabase Auth + RLS will then enforce access on the server. The checks
- * in this file are client-side only.
+ * Methods: init, login, logout, session, listLeads, listUsers,
+ * saveLead, saveEvent, deleteLead, saveUser, deleteUser,
+ * changeOwnPassword, importCsv, exportCsv, hasDeviceLeads, importDeviceLeads, onChange.
  */
 (function (global) {
   'use strict';
 
-  var LEADS_KEY = 'zohar_leads';
-  var USERS_KEY = 'zohar_users';
+  var URL = 'https://ofxlvnjflcuyqvnlxted.supabase.co';
+  var KEY = 'sb_publishable_86lf34rTzykeHtfd-LQCQw_HnlyTwoq';
+  var ADMIN_USERS = URL + '/functions/v1/admin-users';
   var STATUSES = ['open', 'closed', 'not-closed', 'cancelled'];
-  var ORDER_STATUSES = ['', 'active', 'inactive', 'pending'];
+  var USERNAME = /^[a-z0-9._-]{3,32}$/;
+  var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   var HEADER_ALIASES = {
     name: ['שם', 'name', 'full name', 'full_name', 'שם מלא'],
@@ -40,9 +39,12 @@
     orderStart: ['תאריך התחלת הוראת קבע', 'order start']
   };
 
-  var session = null;
+  var client = null;
+  var profile = null;
   var ready = null;
   var chain = Promise.resolve();
+  var listeners = [];
+  var refreshTimer = null;
 
   function enqueue(task) {
     var run = chain.then(function () { return task(); });
@@ -50,157 +52,43 @@
     return run;
   }
 
-  function loadJSON(key, fallback) {
-    try {
-      var raw = localStorage.getItem(key);
-      if (raw == null || raw === '') return fallback;
-      var value = JSON.parse(raw);
-      return value == null ? fallback : value;
-    } catch (err) {
-      return fallback;
+  function notify() {
+    listeners.forEach(function (fn) {
+      try { fn(); } catch (err) {}
+    });
+  }
+
+  function scheduleNotify() {
+    if (!profile) return;
+    clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(notify, 400);
+  }
+
+  function translate(error) {
+    var status = error && (error.status || error.statusCode || error.code);
+    var message = String(error && (error.message || error.details || error.hint) || '');
+    if (status === 401 || status === 403 || status === '42501' || error && error.code === '42501' || /permission|row-level security|not authorized|jwt|forbidden/i.test(message)) {
+      return new Error('אין הרשאה לבצע את הפעולה');
     }
+    if (/failed to fetch|network|offline/i.test(message)) return new Error('אין חיבור לשרת');
+    return new Error('הפעולה נכשלה');
   }
 
-  function saveJSON(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch (err) {
-      throw new Error('לא ניתן לשמור את הנתונים בדפדפן');
-    }
+  function requireUser() {
+    if (!profile) throw new Error('אין הרשאה לבצע את הפעולה');
   }
 
-  function newId() {
-    if (global.crypto && typeof global.crypto.randomUUID === 'function') return global.crypto.randomUUID();
-    return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+  function requireAdmin() {
+    if (!profile || profile.role !== 'admin') throw new Error('אין הרשאה לבצע את הפעולה');
   }
 
-  function sha256(text) {
-    if (!global.crypto || !global.crypto.subtle) {
-      return Promise.reject(new Error('הדפדפן לא תומך בהצפנת סיסמה'));
-    }
-    var data = new TextEncoder().encode(String(text));
-    return global.crypto.subtle.digest('SHA-256', data).then(function (buf) {
-      return Array.from(new Uint8Array(buf)).map(function (b) {
-        return b.toString(16).padStart(2, '0');
-      }).join('');
-    });
+  function validUsername(value) {
+    return USERNAME.test(String(value || '').trim().toLowerCase());
   }
 
-  function safeEqual(a, b) {
-    var left = String(a || '');
-    var right = String(b || '');
-    if (left.length !== right.length) return false;
-    var diff = 0;
-    for (var i = 0; i < left.length; i++) diff |= left.charCodeAt(i) ^ right.charCodeAt(i);
-    return diff === 0;
-  }
-
-  function normalizeRole(role) {
-    var raw = String(role || '').trim();
-    var lower = raw.toLowerCase();
-    if (lower === 'admin' || raw === 'מנהל') return 'admin';
-    if (lower === 'operator' || lower === 'activist' || raw === 'פעיל') return 'operator';
-    if (lower === 'rabbanit' || lower === 'employee' || raw === 'רבנית') return 'rabbanit';
-    return 'unknown';
-  }
-
-  function validUsername(name) {
-    if (typeof name !== 'string') return false;
-    var trimmed = name.trim();
-    if (!trimmed || trimmed.length > 80) return false;
-    if (trimmed === '__proto__' || trimmed === 'prototype' || trimmed === 'constructor') return false;
-    return !/[\u0000-\u001f<>]/.test(trimmed);
-  }
-
-  function isReservedUsername(name) {
-    var trimmed = String(name || '').trim();
-    return trimmed.toLowerCase() === 'admin' || trimmed === 'מנהל';
-  }
-
-  function loadUsers() {
-    var raw = loadJSON(USERS_KEY, null);
-    var users = Object.create(null);
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return users;
-    Object.keys(raw).forEach(function (key) {
-      if (!validUsername(key)) return;
-      var row = raw[key];
-      if (!row || typeof row !== 'object') return;
-      users[key] = {
-        passHash: typeof row.passHash === 'string' ? row.passHash : '',
-        pass: row.pass,
-        name: String(row.name || key),
-        role: normalizeRole(row.role),
-        rabbanit: String(row.rabbanit || '')
-      };
-    });
-    return users;
-  }
-
-  function saveUsers(users) {
-    var plain = {};
-    Object.keys(users).forEach(function (key) {
-      var row = users[key];
-      plain[key] = {
-        passHash: row.passHash || '',
-        name: row.name || key,
-        role: row.role || 'unknown',
-        rabbanit: row.rabbanit || ''
-      };
-    });
-    saveJSON(USERS_KEY, plain);
-  }
-
-  function loadLeads() {
-    var raw = loadJSON(LEADS_KEY, []);
-    if (!Array.isArray(raw)) return [];
-    return raw.filter(function (row) {
-      return row && typeof row === 'object' && !Array.isArray(row);
-    }).map(function (row) {
-      return Object.assign({}, row);
-    });
-  }
-
-  function saveLeads(leads) {
-    saveJSON(LEADS_KEY, leads);
-  }
-
-  function resolveRabbanit(value, users) {
-    var text = String(value || '').trim();
-    if (!text) return '';
-    if (users[text] && users[text].role === 'rabbanit') return text;
-    var found = Object.keys(users).find(function (key) {
-      var user = users[key];
-      return user && user.role === 'rabbanit' && (user.name === text || String(user.rabbanit || '') === text || key === text);
-    });
-    return found || text;
-  }
-
-  function relinkLeads(users, leads) {
-    var changed = false;
-    leads.forEach(function (lead) {
-      var next = resolveRabbanit(lead.rabbanit, users);
-      if (next !== lead.rabbanit) {
-        lead.rabbanit = next;
-        changed = true;
-      }
-    });
-    return changed;
-  }
-
-  function cleanHistory(list) {
-    if (!Array.isArray(list)) return [];
-    return list.slice(-200).map(function (item) {
-      return {
-        date: String(item && item.date || ''),
-        user: String(item && item.user || ''),
-        change: String(item && item.change || '')
-      };
-    });
-  }
-
-  function str(value, fallback) {
-    if (value === undefined || value === null) return fallback == null ? '' : String(fallback);
-    return String(value);
+  function validPassword(value) {
+    var text = String(value || '');
+    return text.length >= 8 && text.length <= 72;
   }
 
   function num(value, fallback) {
@@ -212,130 +100,197 @@
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
-  function pickEnum(value, allowed, fallback) {
-    var text = value == null ? '' : String(value);
-    if (allowed.indexOf(text) >= 0) return text;
-    if (allowed.indexOf(fallback) >= 0) return fallback;
-    return allowed[0];
+  function dateOrNull(value) {
+    var text = String(value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}/.test(text)) return null;
+    return text.slice(0, 10);
   }
 
-  function sanitizeAssignment(value, previous, users) {
-    var text = String(value == null ? '' : value).trim();
-    if (!text) return '';
-    if (users[text] && users[text].role === 'rabbanit') return text;
-    if (previous != null && text === String(previous)) return String(previous);
-    var resolved = resolveRabbanit(text, users);
-    if (users[resolved] && users[resolved].role === 'rabbanit') return resolved;
-    return previous ? String(previous) : '';
+  function phoneKey(phone) {
+    var digits = String(phone || '').replace(/\D/g, '');
+    if (digits.length < 7) return '';
+    return digits.length > 9 ? digits.slice(-9) : digits;
   }
 
-  function asClosed(value) {
-    return value === true || value === 'yes' || value === 'כן' || value === 1 || value === '1';
-  }
-
-  function projectLead(lead, role) {
-    var closed = !!lead.classClosed;
-    if (role === 'operator') {
-      return {
-        id: String(lead.id),
-        name: String(lead.name || ''),
-        phone: String(lead.phone || ''),
-        eventDate: String(lead.eventDate || ''),
-        rabbanit: String(lead.rabbanit || ''),
-        standingOrders: num(lead.standingOrders, 0),
-        cash: num(lead.cash, 0),
-        classClosed: closed
-      };
-    }
-    var shared = {
-      id: String(lead.id),
-      name: String(lead.name || ''),
-      phone: String(lead.phone || ''),
-      email: String(lead.email || ''),
-      source: String(lead.source || ''),
-      status: String(lead.status || 'open'),
-      classClosed: closed,
-      rabbanit: String(lead.rabbanit || ''),
-      eventDate: String(lead.eventDate || ''),
-      notes: String(lead.notes || ''),
-      createdAt: lead.createdAt || ''
+  function publicUser(row) {
+    return {
+      id: row.id,
+      username: row.username,
+      name: row.display_name || row.username,
+      role: row.role,
+      rabbanitName: row.rabbanit_name || ''
     };
-    if (role !== 'admin') return shared;
-    shared.cost = num(lead.cost, 0);
-    shared.standingOrders = num(lead.standingOrders, 0);
-    shared.cash = num(lead.cash, 0);
-    shared.orderStatus = String(lead.orderStatus || '');
-    shared.monthlyAmount = num(lead.monthlyAmount, 0);
-    shared.orderStart = String(lead.orderStart || '');
-    shared.oneTime = num(lead.oneTime, 0);
-    shared.eventCost = num(lead.eventCost, 0);
-    shared.history = cleanHistory(lead.history);
-    return shared;
   }
 
-  function leadsForSession(leads) {
-    if (!session) return [];
-    if (session.role === 'admin') return leads.map(function (lead) { return projectLead(lead, 'admin'); });
-    if (session.role === 'rabbanit') {
-      return leads.filter(function (lead) { return lead.rabbanit === session.username; })
-        .map(function (lead) { return projectLead(lead, 'rabbanit'); });
-    }
-    if (session.role === 'operator') {
-      return leads.filter(function (lead) { return String(lead.eventDate || '').trim(); })
-        .map(function (lead) { return projectLead(lead, 'operator'); });
-    }
-    return [];
+  function currentSession() {
+    if (!profile) return null;
+    return {
+      id: profile.id,
+      username: profile.username,
+      name: profile.name,
+      role: profile.role,
+      rabbanitName: profile.rabbanitName || ''
+    };
   }
 
-  function requireAdmin() {
-    if (!session || session.role !== 'admin') throw new Error('אין הרשאה');
+  async function loadProfile(userId) {
+    var res = await client.from('profiles').select('id, username, display_name, role, rabbanit_name').eq('id', userId).single();
+    if (res.error || !res.data) {
+      profile = null;
+      throw new Error('הפרופיל לא נמצא');
+    }
+    profile = publicUser(res.data);
   }
 
-  function publicUsers(users) {
-    return Object.keys(users).map(function (key) {
-      return { username: key, name: users[key].name || key, role: users[key].role };
-    }).sort(function (a, b) { return a.name.localeCompare(b.name, 'he'); });
-  }
-
-  async function migrate() {
-    var users = loadUsers();
-    for (var i = 0; i < Object.keys(users).length; i++) {
-      var key = Object.keys(users)[i];
-      var user = users[key];
-      if (user.pass && !user.passHash) user.passHash = await sha256(String(user.pass));
-      delete user.pass;
-    }
-    if (!users['מנהל']) {
-      users['מנהל'] = { passHash: await sha256('מנהל123'), name: 'מנהל', role: 'admin', rabbanit: '' };
-    } else {
-      users['מנהל'].role = 'admin';
-      if (!users['מנהל'].name) users['מנהל'].name = 'מנהל';
-      if (!users['מנהל'].passHash) users['מנהל'].passHash = await sha256('מנהל123');
-    }
-    if (!users['פעיל']) {
-      users['פעיל'] = { passHash: await sha256('פעיל123'), name: 'פעיל', role: 'operator', rabbanit: '' };
-    }
-    if (users['מפעילה']) delete users['מפעילה'];
-
-    var leads = loadLeads();
-    var seen = Object.create(null);
-    leads.forEach(function (lead) {
-      var id = lead.id == null || lead.id === '' ? '' : String(lead.id);
-      if (!id || seen[id]) id = newId();
-      seen[id] = true;
-      lead.id = id;
-      if (typeof lead.classClosed !== 'boolean') lead.classClosed = lead.status === 'closed';
-      lead.rabbanit = resolveRabbanit(lead.rabbanit, users);
-      lead.name = String(lead.name || '');
-      lead.phone = String(lead.phone || '');
+  function historyOf(row) {
+    var list = Array.isArray(row.lead_history) ? row.lead_history.slice() : [];
+    list.sort(function (a, b) { return String(a.created_at || '').localeCompare(String(b.created_at || '')); });
+    return list.map(function (item) {
+      var when = item.created_at ? new Date(item.created_at) : null;
+      return {
+        date: when && !isNaN(when.getTime()) ? when.toLocaleString('he-IL') : '',
+        user: item.user_name || '',
+        change: item.change || ''
+      };
     });
-    saveUsers(users);
-    saveLeads(leads);
   }
 
-  function init() {
-    if (!ready) ready = migrate();
-    return ready;
+  function financeOf(row) {
+    var finance = row.lead_finance;
+    if (Array.isArray(finance)) finance = finance[0];
+    return finance || {};
+  }
+
+  function projectLead(row, role) {
+    var finance = role === 'admin' ? financeOf(row) : {};
+    var closed = row.home_class_closed === true || row.status === 'closed';
+    var lead = {
+      id: row.id,
+      name: row.name || '',
+      phone: row.phone || '',
+      email: row.email || '',
+      source: row.source || '',
+      status: row.status || 'open',
+      classClosed: closed,
+      rabbanit: row.assigned_rabbanit_id || '',
+      eventDate: row.event_date || '',
+      notes: row.notes || '',
+      createdAt: row.created_at || '',
+      standingOrders: num(row.standing_orders, 0),
+      cash: num(row.cash, 0),
+      orderStatus: row.order_status || ''
+    };
+    if (role === 'admin') {
+      lead.cost = num(finance.cost, 0);
+      lead.eventCost = num(finance.event_cost, 0);
+      lead.oneTime = num(finance.one_time, 0);
+      lead.monthlyAmount = num(finance.monthly_amount, 0);
+      lead.orderStart = finance.order_start || '';
+      lead.history = historyOf(row);
+    } else if (role === 'rabbanit') {
+      lead.history = historyOf(row);
+      delete lead.standingOrders;
+      delete lead.cash;
+      delete lead.orderStatus;
+    } else {
+      delete lead.email;
+      delete lead.source;
+      delete lead.notes;
+      delete lead.createdAt;
+    }
+    return lead;
+  }
+
+  function matchRabbanit(value, profiles) {
+    var text = String(value || '').trim();
+    if (!text) return null;
+    if (UUID.test(text)) return text;
+    var lower = text.toLowerCase();
+    var found = (profiles || []).find(function (person) {
+      return person.role === 'rabbanit' && (person.id === text || person.username === lower || person.name === text || person.rabbanitName === text);
+    });
+    return found ? found.id : null;
+  }
+
+  function payloadFrom(input, profiles) {
+    var status = STATUSES.indexOf(input.status) >= 0 ? input.status : 'open';
+    var closed = input.classClosed === true || input.classClosed === 'yes' || input.classClosed === 'כן';
+    var opened = input.classClosed === false || input.classClosed === 'no' || input.classClosed === 'לא';
+    if (closed) status = 'closed';
+    else if (opened && status === 'closed') status = 'open';
+    var order = input.orderStatus == null ? '' : String(input.orderStatus);
+    if (['active', 'inactive', 'pending'].indexOf(order) < 0) order = '';
+    var assigned = profiles ? matchRabbanit(input.rabbanit, profiles) : (function () {
+      var text = String(input.rabbanit || '').trim();
+      if (!text) return null;
+      if (!UUID.test(text)) throw new Error('בחרו רבנית מהרשימה');
+      return text;
+    })();
+    return {
+      name: String(input.name || '').trim(),
+      phone: String(input.phone || '').trim(),
+      email: String(input.email || '').trim() || null,
+      source: String(input.source || '').trim(),
+      status: status,
+      standing_orders: Math.max(0, Math.round(num(input.standingOrders, 0))),
+      order_status: order || null,
+      cash: Math.max(0, num(input.cash, 0)),
+      event_date: dateOrNull(input.eventDate),
+      assigned_rabbanit_id: assigned,
+      notes: String(input.notes == null ? '' : input.notes)
+    };
+  }
+
+  function financeFrom(input) {
+    return {
+      cost: num(input.cost, 0),
+      event_cost: num(input.eventCost, 0),
+      one_time: num(input.oneTime, 0),
+      monthly_amount: num(input.monthlyAmount, 0),
+      order_start: dateOrNull(input.orderStart)
+    };
+  }
+
+  async function syncFinance(leadId, finance) {
+    var updated = await client.from('lead_finance').update(finance).eq('lead_id', leadId).select('lead_id');
+    if (updated.error) throw translate(updated.error);
+    if (updated.data && updated.data.length) return;
+    var inserted = await client.from('lead_finance').upsert(Object.assign({ lead_id: leadId }, finance), { onConflict: 'lead_id' });
+    if (inserted.error) throw translate(inserted.error);
+  }
+
+  async function accessToken() {
+    var res = await client.auth.getSession();
+    var session = res.data && res.data.session;
+    if (!session || !session.access_token) throw new Error('אין הרשאה לבצע את הפעולה');
+    return session.access_token;
+  }
+
+  async function adminUsers(body) {
+    var token = await accessToken();
+    var response;
+    try {
+      response = await fetch(ADMIN_USERS, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: KEY,
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      throw new Error('אין חיבור לשרת');
+    }
+    var payload = null;
+    try { payload = await response.json(); } catch (err) { payload = null; }
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) throw new Error('אין הרשאה לבצע את הפעולה');
+      var message = payload && (payload.message || payload.error || payload.msg);
+      if (typeof message === 'string' && message) throw new Error(message);
+      throw new Error('הפעולה נכשלה');
+    }
+    return payload || {};
   }
 
   function normHeader(value) {
@@ -375,7 +330,6 @@
   function mapOrderStatus(value) {
     var raw = String(value || '').trim();
     var lower = raw.toLowerCase();
-    if (!raw) return '';
     if (lower === 'active' || raw === 'פעילה' || raw === 'פעיל') return 'active';
     if (lower === 'inactive' || raw === 'לא פעילה') return 'inactive';
     if (lower === 'pending' || raw === 'ממתינה') return 'pending';
@@ -388,12 +342,6 @@
     if (text.indexOf('רבקה') >= 0) return 'רבקה';
     if (text.indexOf('לאה') >= 0) return 'לאה';
     return '';
-  }
-
-  function phoneKey(phone) {
-    var digits = String(phone || '').replace(/\D/g, '');
-    if (digits.length < 7) return '';
-    return digits.length > 9 ? digits.slice(-9) : digits;
   }
 
   function parseCsv(text) {
@@ -427,14 +375,6 @@
     return text;
   }
 
-  function statusLabel(status) {
-    return { open: 'פתוח', closed: 'נסגר', 'not-closed': 'לא נסגר', cancelled: 'ביטל' }[status] || status || '';
-  }
-
-  function orderLabel(status) {
-    return { active: 'פעילה', inactive: 'לא פעילה', pending: 'ממתינה' }[status] || '';
-  }
-
   function knownHeaderSet() {
     var set = Object.create(null);
     Object.keys(HEADER_ALIASES).forEach(function (key) {
@@ -454,8 +394,8 @@
         rabbanit: detectRabbanit(row[3]),
         cost: 0,
         status: 'open',
-        eventDate: '',
         classClosed: false,
+        eventDate: '',
         standingOrders: 0,
         cash: 0,
         orderStatus: '',
@@ -468,18 +408,17 @@
     var source = cell(headers, row, 'source');
     var status = mapStatus(cell(headers, row, 'status'));
     var hasClosed = headerIndex(headers, HEADER_ALIASES.classClosed) >= 0;
-    var rabbanit = cell(headers, row, 'rabbanit') || detectRabbanit(source);
     return {
       name: cell(headers, row, 'name'),
       phone: cell(headers, row, 'phone'),
       email: cell(headers, row, 'email'),
       source: source,
       notes: cell(headers, row, 'notes'),
-      rabbanit: rabbanit,
+      rabbanit: cell(headers, row, 'rabbanit') || detectRabbanit(source),
       cost: num(cell(headers, row, 'cost'), 0),
       status: status,
-      eventDate: cell(headers, row, 'eventDate'),
       classClosed: hasClosed ? mapClosed(cell(headers, row, 'classClosed')) : status === 'closed',
+      eventDate: cell(headers, row, 'eventDate'),
       standingOrders: num(cell(headers, row, 'standingOrders'), 0),
       cash: num(cell(headers, row, 'cash'), 0),
       orderStatus: mapOrderStatus(cell(headers, row, 'orderStatus')),
@@ -490,140 +429,184 @@
     };
   }
 
-  function sanitizeAdminLead(input, prev, users) {
-    var current = prev || {};
-    var classClosed = typeof input.classClosed === 'boolean'
-      ? input.classClosed
-      : (input.classClosed === 'yes' || input.classClosed === 'כן'
-        ? true
-        : (input.classClosed === 'no' || input.classClosed === 'לא' ? false : !!current.classClosed));
-    return {
-      id: current.id || newId(),
-      name: input.name !== undefined && input.name !== null ? String(input.name) : String(current.name || ''),
-      phone: input.phone !== undefined && input.phone !== null ? String(input.phone) : String(current.phone || ''),
-      email: str(input.email, current.email),
-      source: str(input.source, current.source),
-      cost: num(input.cost, current.cost),
-      status: pickEnum(input.status, STATUSES, current.status || 'open'),
-      standingOrders: num(input.standingOrders, current.standingOrders),
-      cash: num(input.cash, current.cash),
-      orderStatus: pickEnum(input.orderStatus, ORDER_STATUSES, current.orderStatus || ''),
-      monthlyAmount: num(input.monthlyAmount, current.monthlyAmount),
-      orderStart: str(input.orderStart, current.orderStart),
-      oneTime: num(input.oneTime, current.oneTime),
-      eventCost: num(input.eventCost, current.eventCost),
-      rabbanit: sanitizeAssignment(input.rabbanit !== undefined ? input.rabbanit : current.rabbanit, current.rabbanit, users),
-      eventDate: str(input.eventDate, current.eventDate),
-      notes: str(input.notes, current.notes),
-      createdAt: current.createdAt || new Date().toISOString(),
-      history: cleanHistory(input.history != null ? input.history : current.history),
-      classClosed: classClosed
-    };
+  async function insertLead(input, profiles) {
+    if (!String(input.name || '').trim()) throw new Error('מלאו את השדות החובה');
+    var row = payloadFrom(input, profiles || null);
+    var inserted = await client.from('leads').insert(row).select('id').single();
+    if (inserted.error) throw translate(inserted.error);
+    if (profile.role === 'admin') await syncFinance(inserted.data.id, financeFrom(input));
+    return inserted.data.id;
+  }
+
+  function readDeviceLeads() {
+    try {
+      var raw = localStorage.getItem('zohar_leads');
+      if (!raw) return [];
+      var data = JSON.parse(raw);
+      return Array.isArray(data) ? data : [];
+    } catch (err) {
+      return [];
+    }
+  }
+
+  function clearDeviceCrm() {
+    try {
+      localStorage.removeItem('zohar_leads');
+      localStorage.removeItem('zohar_users');
+    } catch (err) {}
+  }
+
+  function listenForChanges() {
+    window.addEventListener('focus', scheduleNotify);
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') scheduleNotify();
+    });
+    client.channel('zohar-crm')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, scheduleNotify)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_finance' }, scheduleNotify)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_history' }, scheduleNotify)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, scheduleNotify)
+      .subscribe();
+  }
+
+  async function init() {
+    if (ready) return ready;
+    ready = (async function () {
+      if (!global.supabase || typeof global.supabase.createClient !== 'function') {
+        throw new Error('לא ניתן לטעון את החיבור לשרת');
+      }
+      client = global.supabase.createClient(URL, KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+      });
+      var sessionRes = await client.auth.getSession();
+      var session = sessionRes.data && sessionRes.data.session;
+      if (session) {
+        try { await loadProfile(session.user.id); }
+        catch (err) {
+          profile = null;
+          await client.auth.signOut();
+        }
+      }
+      client.auth.onAuthStateChange(function (event) {
+        if (event === 'SIGNED_OUT') profile = null;
+      });
+      listenForChanges();
+    })();
+    return ready;
   }
 
   async function login(username, password) {
     await init();
-    var users = loadUsers();
-    var key = String(username || '').trim();
-    var user = users[key];
-    if (!user || !user.passHash) {
-      session = null;
-      return null;
+    var name = String(username || '').trim().toLowerCase();
+    if (!validUsername(name)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
+    if (!password) throw new Error('הזינו סיסמה');
+    var res = await client.auth.signInWithPassword({ email: name + '@zohar.local', password: String(password) });
+    if (res.error || !res.data || !res.data.user) throw new Error('שם משתמש או סיסמה שגויים');
+    try {
+      await loadProfile(res.data.user.id);
+    } catch (err) {
+      await client.auth.signOut();
+      profile = null;
+      throw err;
     }
-    var hash = await sha256(password == null ? '' : String(password));
-    if (!safeEqual(hash, user.passHash)) {
-      session = null;
-      return null;
-    }
-    session = { username: key, name: user.name, role: user.role };
-    return { username: key, name: user.name, role: user.role };
+    return currentSession();
   }
 
-  function logout() {
-    session = null;
-    return Promise.resolve();
-  }
-
-  function currentSession() {
-    if (!session) return null;
-    return { username: session.username, name: session.name, role: session.role };
+  async function logout() {
+    await init();
+    profile = null;
+    await client.auth.signOut();
   }
 
   async function listLeads() {
     await init();
-    return leadsForSession(loadLeads());
+    requireUser();
+    var columns = profile.role === 'activist'
+      ? 'id,name,phone,status,standing_orders,cash,event_date,assigned_rabbanit_id,home_class_closed'
+      : (profile.role === 'rabbanit'
+        ? 'id,name,phone,email,source,status,event_date,assigned_rabbanit_id,notes,created_at,home_class_closed'
+        : 'id,name,phone,email,source,status,standing_orders,order_status,cash,event_date,assigned_rabbanit_id,notes,created_at,home_class_closed');
+    var res = await client.from('leads').select(columns).order('created_at', { ascending: false });
+    if (res.error && columns.indexOf('home_class_closed') >= 0) {
+      res = await client.from('leads').select(columns.replace(',home_class_closed', '')).order('created_at', { ascending: false });
+    }
+    if (res.error) throw translate(res.error);
+    var rows = res.data || [];
+    if ((profile.role === 'admin' || profile.role === 'rabbanit') && rows.length) {
+      var ids = rows.map(function (row) { return row.id; });
+      if (profile.role === 'admin') {
+        var fin = await client.from('lead_finance').select('lead_id,cost,event_cost,one_time,monthly_amount,order_start').in('lead_id', ids);
+        if (fin.error) throw translate(fin.error);
+        var finMap = {};
+        (fin.data || []).forEach(function (row) { finMap[row.lead_id] = row; });
+        rows.forEach(function (row) { row.lead_finance = finMap[row.id]; });
+      }
+      var hist = await client.from('lead_history').select('lead_id,user_name,change,created_at').in('lead_id', ids);
+      if (!hist.error) {
+        var histMap = {};
+        (hist.data || []).forEach(function (row) {
+          if (!histMap[row.lead_id]) histMap[row.lead_id] = [];
+          histMap[row.lead_id].push(row);
+        });
+        rows.forEach(function (row) { row.lead_history = histMap[row.id] || []; });
+      }
+    }
+    return rows.map(function (row) { return projectLead(row, profile.role); });
   }
 
   async function listUsers() {
     await init();
-    if (!session) return [];
-    var users = publicUsers(loadUsers());
-    if (session.role === 'admin') return users;
-    if (session.role === 'operator') return users.filter(function (user) { return user.role === 'rabbanit'; });
-    return [];
+    requireUser();
+    if (profile.role === 'rabbanit') return [];
+    var query = client.from('profiles').select('id, username, display_name, role, rabbanit_name').order('display_name');
+    if (profile.role === 'activist') query = query.eq('role', 'rabbanit');
+    var res = await query;
+    if (res.error) throw translate(res.error);
+    return (res.data || []).map(publicUser);
   }
 
   function saveLead(input) {
     return enqueue(async function () {
       await init();
-      if (!session) throw new Error('אין הרשאה');
-      if (session.role === 'operator' || session.role === 'unknown') throw new Error('אין הרשאה');
-      var leads = loadLeads();
-      var users = loadUsers();
-      if (session.role === 'rabbanit') {
-        var own = leads.find(function (lead) { return String(lead.id) === String(input && input.id); });
-        if (!own || own.rabbanit !== session.username) throw new Error('אין הרשאה');
-        var closed = asClosed(input.classClosed);
-        if (!!own.classClosed !== closed) {
-          var history = Array.isArray(own.history) ? own.history : [];
-          history.push({
-            date: new Date().toLocaleString('he-IL'),
-            user: session.name,
-            change: closed ? 'חוג בית נסגר' : 'חוג בית סומן כלא נסגר'
-          });
-          own.history = cleanHistory(history);
-        }
-        own.classClosed = closed;
-        saveLeads(leads);
-        return projectLead(own, 'rabbanit');
+      requireUser();
+      input = input || {};
+      if (profile.role === 'rabbanit') {
+        if (!input.id) throw new Error('אין הרשאה לבצע את הפעולה');
+        var closed = input.classClosed === true || input.classClosed === 'yes' || input.classClosed === 'כן';
+        var rpc = await client.rpc('set_home_class_closed', { p_lead_id: input.id, p_closed: closed });
+        if (rpc.error) throw translate(rpc.error);
+        return;
       }
-      if (session.role !== 'admin') throw new Error('אין הרשאה');
-      var existing = null;
-      if (input && input.id) {
-        existing = leads.find(function (lead) { return String(lead.id) === String(input.id); }) || null;
-        if (!existing) throw new Error('הליד לא נמצא');
+      if (profile.role !== 'admin') throw new Error('אין הרשאה לבצע את הפעולה');
+      if (input.id) {
+        var row = payloadFrom(input, null);
+        var updated = await client.from('leads').update(row).eq('id', input.id).select('id');
+        if (updated.error) throw translate(updated.error);
+        if (!updated.data || !updated.data.length) throw new Error('הליד לא נמצא');
+        await syncFinance(input.id, financeFrom(input));
+        return;
       }
-      var stored = sanitizeAdminLead(input || {}, existing, users);
-      if (existing) {
-        var index = leads.findIndex(function (lead) { return lead.id === existing.id; });
-        leads[index] = stored;
-      } else {
-        leads.unshift(stored);
-      }
-      saveLeads(leads);
-      return projectLead(stored, 'admin');
+      await insertLead(input, null);
     });
   }
 
   function saveEvent(id, patch) {
     return enqueue(async function () {
       await init();
-      if (!session || session.role !== 'operator') throw new Error('אין הרשאה');
-      var leads = loadLeads();
-      var lead = leads.find(function (item) { return String(item.id) === String(id); });
-      if (!lead || !String(lead.eventDate || '').trim()) throw new Error('האירוע לא נמצא');
+      if (!profile || profile.role !== 'activist') throw new Error('אין הרשאה לבצע את הפעולה');
       var orders = Number(patch && patch.standingOrders);
       var cash = Number(patch && patch.cash);
       if (!Number.isFinite(orders) || orders < 0) throw new Error('מספר הוראות הקבע אינו תקין');
       if (!Number.isFinite(cash) || cash < 0) throw new Error('סכום המזומן אינו תקין');
-      lead.standingOrders = Math.round(orders);
-      lead.cash = Math.round(cash * 100) / 100;
-      lead.rabbanit = sanitizeAssignment(patch && patch.rabbanit, lead.rabbanit, loadUsers());
-      var history = Array.isArray(lead.history) ? lead.history : [];
-      history.push({ date: new Date().toLocaleString('he-IL'), user: session.name, change: 'עודכנו נתוני חוג' });
-      lead.history = cleanHistory(history);
-      saveLeads(leads);
-      return projectLead(lead, 'operator');
+      var assigned = String(patch && patch.rabbanit || '').trim();
+      if (assigned && !UUID.test(assigned)) throw new Error('בחרו רבנית מהרשימה');
+      var res = await client.from('leads').update({
+        standing_orders: Math.round(orders),
+        cash: cash,
+        assigned_rabbanit_id: assigned || null
+      }).eq('id', id).select('id');
+      if (res.error) throw translate(res.error);
+      if (!res.data || !res.data.length) throw new Error('האירוע לא נמצא');
     });
   }
 
@@ -631,10 +614,9 @@
     return enqueue(async function () {
       await init();
       requireAdmin();
-      var leads = loadLeads();
-      var next = leads.filter(function (lead) { return String(lead.id) !== String(id); });
-      if (next.length === leads.length) throw new Error('הליד לא נמצא');
-      saveLeads(next);
+      var res = await client.from('leads').delete().eq('id', id).select('id');
+      if (res.error) throw translate(res.error);
+      if (!res.data || !res.data.length) throw new Error('הליד לא נמצא');
     });
   }
 
@@ -642,140 +624,118 @@
     return enqueue(async function () {
       await init();
       requireAdmin();
-      var users = loadUsers();
-      var username = String(input && input.username || '').trim();
+      var username = String(input && input.username || '').trim().toLowerCase();
       var name = String(input && input.name || '').trim();
-      var role = input && input.role === 'rabbanit' ? 'rabbanit' : (input && input.role === 'operator' ? 'operator' : '');
+      var role = input && input.role === 'rabbanit' ? 'rabbanit' : (input && input.role === 'activist' ? 'activist' : '');
       var password = input && input.password ? String(input.password) : '';
-      var creating = !!(input && input.create);
-      if (!validUsername(username)) throw new Error('שם משתמש אינו תקין');
-      if (!name) throw new Error('מלאו את השדות החובה');
-      if (!role) throw new Error('תפקיד לא תקין');
-      if (creating) {
-        if (isReservedUsername(username) || (users[username] && users[username].role === 'admin')) {
-          throw new Error('לא ניתן ליצור משתמש בשם admin או לדרוס את חשבון המנהל');
-        }
-        if (users[username]) throw new Error('שם המשתמש כבר קיים');
-        if (!password) throw new Error('מלאו את השדות החובה');
-        users[username] = {
-          passHash: await sha256(password),
-          name: name,
+      var rabbanitName = String(input && input.rabbanitName || '').trim();
+      if (!name || !role) throw new Error('מלאו את השדות החובה');
+      if (role === 'rabbanit' && !rabbanitName) throw new Error('מלאו את שם הרבנית');
+      if (input && input.create) {
+        if (!validUsername(username)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
+        if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
+        await adminUsers({
+          action: 'create',
+          username: username,
+          password: password,
+          display_name: name,
           role: role,
-          rabbanit: role === 'rabbanit' ? name : ''
-        };
-      } else {
-        if (!users[username]) throw new Error('המשתמש לא נמצא');
-        if (users[username].role === 'admin' || isReservedUsername(username)) {
-          throw new Error('לא ניתן ליצור משתמש בשם admin או לדרוס את חשבון המנהל');
-        }
-        users[username].name = name;
-        users[username].role = role;
-        users[username].rabbanit = role === 'rabbanit' ? name : '';
-        if (password) users[username].passHash = await sha256(password);
-        delete users[username].pass;
+          rabbanit_name: role === 'rabbanit' ? rabbanitName : undefined
+        });
+        return;
       }
-      var leads = loadLeads();
-      relinkLeads(users, leads);
-      saveUsers(users);
-      saveLeads(leads);
+      if (!input || !input.id) throw new Error('המשתמש לא נמצא');
+      var body = {
+        action: 'update',
+        user_id: input.id,
+        display_name: name,
+        role: role,
+        rabbanit_name: role === 'rabbanit' ? rabbanitName : null
+      };
+      if (password) {
+        if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
+        body.password = password;
+      }
+      await adminUsers(body);
     });
   }
 
-  function deleteUser(username) {
+  function deleteUser(userId) {
     return enqueue(async function () {
       await init();
       requireAdmin();
-      var key = String(username || '').trim();
-      var users = loadUsers();
-      if (!users[key]) throw new Error('המשתמש לא נמצא');
-      if (users[key].role === 'admin' || key === 'מנהל') throw new Error('לא ניתן למחוק את המנהל');
-      delete users[key];
-      saveUsers(users);
+      if (!userId) throw new Error('המשתמש לא נמצא');
+      await adminUsers({ action: 'delete', user_id: userId });
     });
   }
 
-  function changePassword(username, password) {
+  async function changeOwnPassword(password) {
+    await init();
+    requireUser();
+    if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
+    var res = await client.auth.updateUser({ password: String(password) });
+    if (res.error) throw translate(res.error);
+  }
+
+  function importRecords(records) {
     return enqueue(async function () {
       await init();
       requireAdmin();
-      var key = String(username || '').trim();
-      var users = loadUsers();
-      if (!users[key]) throw new Error('המשתמש לא נמצא');
-      if (!password) throw new Error('הזינו סיסמה');
-      users[key].passHash = await sha256(String(password));
-      delete users[key].pass;
-      saveUsers(users);
+      var profiles = await listUsers();
+      var existing = await client.from('leads').select('phone');
+      if (existing.error) throw translate(existing.error);
+      var seen = Object.create(null);
+      (existing.data || []).forEach(function (lead) {
+        var key = phoneKey(lead.phone);
+        if (key) seen[key] = true;
+      });
+      var added = 0;
+      var skipped = 0;
+      for (var i = 0; i < records.length; i++) {
+        var record = records[i];
+        if (!record || !String(record.name || '').trim()) continue;
+        var key = phoneKey(record.phone);
+        if (key && seen[key]) { skipped++; continue; }
+        if (key) seen[key] = true;
+        record.rabbanit = matchRabbanit(record.rabbanit, profiles) || '';
+        await insertLead(record, profiles);
+        added++;
+      }
+      return { added: added, skipped: skipped };
     });
   }
 
   function importCsv(text) {
-    return enqueue(async function () {
-      await init();
-      requireAdmin();
-      var table = parseCsv(text);
-      if (!table.length) return { added: 0, skipped: 0 };
-      var known = knownHeaderSet();
-      var first = table[0].map(normHeader);
-      var hasHeader = first.some(function (item) { return known[item]; });
-      var headers = hasHeader ? first : null;
-      var data = hasHeader ? table.slice(1) : table;
-      var users = loadUsers();
-      var leads = loadLeads();
-      var seen = Object.create(null);
-      leads.forEach(function (lead) {
-        var key = phoneKey(lead.phone);
-        if (key) seen[key] = true;
-      });
-      var created = [];
-      var skipped = 0;
-      data.forEach(function (row) {
-        var record = recordFromRow(row, headers);
-        if (!record.name) return;
-        var key = phoneKey(record.phone);
-        if (key && seen[key]) { skipped++; return; }
-        if (key) seen[key] = true;
-        created.push({
-          id: newId(),
-          name: record.name,
-          phone: record.phone,
-          email: record.email,
-          source: record.source,
-          cost: record.cost,
-          status: record.status,
-          standingOrders: record.standingOrders,
-          cash: record.cash,
-          orderStatus: record.orderStatus,
-          monthlyAmount: record.monthlyAmount,
-          orderStart: record.orderStart,
-          oneTime: record.oneTime,
-          eventCost: record.eventCost,
-          rabbanit: resolveRabbanit(record.rabbanit, users),
-          eventDate: record.eventDate,
-          notes: record.notes || 'יובא',
-          createdAt: new Date().toISOString(),
-          history: [{ date: new Date().toLocaleString('he-IL'), user: session.name, change: 'יובא' }],
-          classClosed: !!record.classClosed
-        });
-      });
-      if (created.length) saveLeads(created.concat(leads));
-      return { added: created.length, skipped: skipped };
-    });
+    var table = parseCsv(text);
+    if (!table.length) return Promise.resolve({ added: 0, skipped: 0 });
+    var known = knownHeaderSet();
+    var first = table[0].map(normHeader);
+    var hasHeader = first.some(function (item) { return known[item]; });
+    var headers = hasHeader ? first : null;
+    var data = hasHeader ? table.slice(1) : table;
+    return importRecords(data.map(function (row) { return recordFromRow(row, headers); }));
   }
 
   async function exportCsv() {
     await init();
-    if (!session || (session.role !== 'admin' && session.role !== 'rabbanit')) throw new Error('אין הרשאה');
-    var users = loadUsers();
-    var leads = loadLeads().filter(function (lead) {
-      return session.role === 'admin' || lead.rabbanit === session.username;
-    });
-    function rabbanitName(key) {
-      if (!key) return '';
-      return users[key] ? (users[key].name || key) : String(key);
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'rabbanit')) throw new Error('אין הרשאה לבצע את הפעולה');
+    var leads = await listLeads();
+    var profiles = profile.role === 'admin' ? await listUsers() : [];
+    function rabbanitName(id) {
+      var person = profiles.find(function (item) { return item.id === id; });
+      if (person) return person.name || person.username;
+      if (profile.role === 'rabbanit' && id === profile.id) return profile.name;
+      return '';
+    }
+    function statusLabel(status) {
+      return { open: 'פתוח', closed: 'נסגר', 'not-closed': 'לא נסגר', cancelled: 'ביטל' }[status] || status || '';
+    }
+    function orderLabel(status) {
+      return { active: 'פעילה', inactive: 'לא פעילה', pending: 'ממתינה' }[status] || '';
     }
     var header;
     var lines;
-    if (session.role === 'admin') {
+    if (profile.role === 'admin') {
       header = ['שם', 'טלפון', 'אימייל', 'מקור', 'עלות', 'סטטוס', 'נסגר חוג בית', 'הוראות קבע', 'מזומן', 'סטטוס קבע', 'סכום חודשי', 'תרומה חד-פעמית', 'עלות חוג', 'תאריך התחלת הוראת קבע', 'רבנית', 'תאריך חוג', 'הערות'];
       lines = leads.map(function (lead) {
         return [lead.name, lead.phone, lead.email, lead.source, lead.cost, statusLabel(lead.status), lead.classClosed ? 'כן' : 'לא', lead.standingOrders, lead.cash, orderLabel(lead.orderStatus), lead.monthlyAmount, lead.oneTime, lead.eventCost, lead.orderStart, rabbanitName(lead.rabbanit), lead.eventDate, lead.notes];
@@ -791,6 +751,40 @@
     }).join('\n');
   }
 
+  function hasDeviceLeads() {
+    return readDeviceLeads().length > 0;
+  }
+
+  function importDeviceLeads() {
+    var records = readDeviceLeads().map(function (lead) {
+      var status = STATUSES.indexOf(lead.status) >= 0 ? lead.status : 'open';
+      if (lead.classClosed === true) status = 'closed';
+      return {
+        name: lead.name,
+        phone: lead.phone,
+        email: lead.email,
+        source: lead.source,
+        notes: lead.notes,
+        status: status,
+        classClosed: status === 'closed',
+        rabbanit: lead.rabbanit,
+        eventDate: lead.eventDate,
+        standingOrders: lead.standingOrders,
+        cash: lead.cash,
+        orderStatus: lead.orderStatus,
+        cost: lead.cost,
+        monthlyAmount: lead.monthlyAmount,
+        oneTime: lead.oneTime,
+        eventCost: lead.eventCost,
+        orderStart: lead.orderStart
+      };
+    });
+    return importRecords(records).then(function (result) {
+      clearDeviceCrm();
+      return result;
+    });
+  }
+
   global.ZoharData = {
     init: init,
     login: login,
@@ -803,8 +797,11 @@
     deleteLead: deleteLead,
     saveUser: saveUser,
     deleteUser: deleteUser,
-    changePassword: changePassword,
+    changeOwnPassword: changeOwnPassword,
     importCsv: importCsv,
-    exportCsv: exportCsv
+    exportCsv: exportCsv,
+    hasDeviceLeads: hasDeviceLeads,
+    importDeviceLeads: importDeviceLeads,
+    onChange: function (fn) { if (typeof fn === 'function') listeners.push(fn); }
   };
 })(window);
