@@ -38,10 +38,12 @@
   function translate(error) {
     var message = String(error && (error.message || error.details || '') || '');
     var status = error && (error.status || error.code);
-    if (status === 401 || status === 403 || status === '42501' || /permission|row-level|jwt|forbidden/i.test(message)) {
+    if (status === 401 || status === 403 || status === '42501' || /row-level security|permission denied/i.test(message)) {
       return new Error('אין הרשאה לבצע את הפעולה');
     }
+    if (/jwt expired|invalid jwt/i.test(message)) return new Error('פג תוקף ההתחברות. היכנסו שוב.');
     if (/failed to fetch|network|offline/i.test(message)) return new Error('אין חיבור לשרת');
+    if (message) return new Error(message);
     return new Error('הפעולה נכשלה');
   }
 
@@ -49,8 +51,10 @@
     if (!profile) throw new Error('אין הרשאה לבצע את הפעולה');
   }
 
-  function requireAdmin() {
-    if (!profile || profile.role !== 'admin') throw new Error('אין הרשאה לבצע את הפעולה');
+  async function requireAdmin() {
+    var session = await refreshIdentity();
+    if (!session || !session.access_token) throw new Error('פג תוקף ההתחברות. היכנסו שוב.');
+    if (profile && profile.role && profile.role !== 'admin') throw new Error('אין הרשאה לבצע את הפעולה');
   }
 
   function validUsername(value) {
@@ -87,6 +91,7 @@
     var messages = {
       username_taken: 'שם המשתמש כבר תפוס',
       rabbaniya_id_required: 'לא ניתן ליצור את הרבנית. נסו שוב.',
+      rabbaniya_name_taken: 'כבר קיימת רבנית בשם הזה',
       rabbaniya_already_linked: 'הרבנית הזו כבר משויכת למשתמש אחר',
       rabbaniya_not_found: 'הרבנית לא נמצאה',
       cannot_change_own_role: 'אי אפשר לשנות את התפקיד של עצמך',
@@ -95,8 +100,10 @@
       user_banned: 'החשבון הזה מושבת. פנו למנהל.'
     };
     if (messages[code]) return new Error(messages[code]);
-    if (response.status === 409) return new Error(messages.username_taken);
     if (response.status === 401 || response.status === 403) return new Error('אין הרשאה לבצע את הפעולה');
+    var detail = payload && (payload.message || payload.msg || payload.details || payload.error);
+    if (detail && String(detail) !== code) return new Error(String(detail));
+    if (detail && String(detail) === code) return new Error(String(detail));
     return new Error('הפעולה נכשלה');
   }
 
@@ -193,10 +200,40 @@
     profile = publicUser(res.data);
   }
 
+  function sessionFresh(session) {
+    if (!session || !session.access_token) return false;
+    if (!session.expires_at) return true;
+    return session.expires_at * 1000 > Date.now() + 60000;
+  }
+
+  async function currentAuthSession() {
+    var session = null;
+    try {
+      var res = await client.auth.getSession();
+      session = res.data && res.data.session;
+    } catch (err) {}
+    if (sessionFresh(session)) return session;
+    try {
+      var refreshed = await client.auth.refreshSession();
+      var next = refreshed.data && refreshed.data.session;
+      if (next && next.access_token) return next;
+    } catch (err) {}
+    if (session && session.access_token) return session;
+    return null;
+  }
+
+  async function refreshIdentity() {
+    await init();
+    var session = await currentAuthSession();
+    if (session && session.user && (!profile || profile.id !== session.user.id)) {
+      try { await loadProfile(session.user.id); } catch (err) {}
+    }
+    return session;
+  }
+
   async function accessToken() {
-    var res = await client.auth.getSession();
-    var session = res.data && res.data.session;
-    if (!session || !session.access_token) throw new Error('אין הרשאה לבצע את הפעולה');
+    var session = await currentAuthSession();
+    if (!session || !session.access_token) throw new Error('פג תוקף ההתחברות. היכנסו שוב.');
     return session.access_token;
   }
 
@@ -258,8 +295,13 @@
           await client.auth.signOut();
         }
       }
-      client.auth.onAuthStateChange(function (event) {
-        if (event === 'SIGNED_OUT') profile = null;
+      client.auth.onAuthStateChange(function (event, session) {
+        if (event === 'SIGNED_OUT' && !session) profile = null;
+        if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session && session.user) {
+          if (!profile || profile.id !== session.user.id) {
+            loadProfile(session.user.id).catch(function () {});
+          }
+        }
       });
       listenForChanges();
     })();
@@ -306,7 +348,7 @@
   function saveRabbaniya(input) {
     return enqueue(async function () {
       await init();
-      requireAdmin();
+      await requireAdmin();
       var name = String(input && input.name || '').trim();
       if (!name) throw new Error('מלאו את שם הרבנית');
       var active = !(input && input.active === false);
@@ -330,7 +372,7 @@
   function deleteRabbaniya(id) {
     return enqueue(async function () {
       await init();
-      requireAdmin();
+      await requireAdmin();
       var res = await client.from('rabbaniyot').delete().eq('id', id).select('id');
       if (res.error) throw translate(res.error);
       if (!res.data || !res.data.length) throw new Error('הרבנית לא נמצאה');
@@ -356,7 +398,7 @@
   function saveUser(input) {
     return enqueue(async function () {
       await init();
-      requireAdmin();
+      await requireAdmin();
       var username = String(input && input.username || '').trim().toLowerCase();
       var name = String(input && input.name || '').trim();
       var allowed = { admin: true, activist: true, rabbanit: true, call_center: true };
@@ -398,7 +440,7 @@
   function deleteUser(userId) {
     return enqueue(async function () {
       await init();
-      requireAdmin();
+      await requireAdmin();
       await adminUsers({ action: 'delete', user_id: userId });
     });
   }
@@ -472,7 +514,7 @@
   function deleteLead(id) {
     return enqueue(async function () {
       await init();
-      requireAdmin();
+      await requireAdmin();
       var res = await client.from('leads').delete().eq('id', id).select('id');
       if (res.error) throw translate(res.error);
       if (!res.data || !res.data.length) throw new Error('הליד לא נמצא');
@@ -534,7 +576,7 @@
   function deleteHomeClass(id) {
     return enqueue(async function () {
       await init();
-      requireAdmin();
+      await requireAdmin();
       var res = await client.from('home_classes').delete().eq('id', id).select('id');
       if (res.error) throw translate(res.error);
       if (!res.data || !res.data.length) throw new Error('הסגירה לא נמצאה');
@@ -629,7 +671,7 @@
   function deleteEvent(id) {
     return enqueue(async function () {
       await init();
-      requireAdmin();
+      await requireAdmin();
       var res = await client.from('events').delete().eq('id', id).select('id');
       if (res.error) throw translate(res.error);
       if (!res.data || !res.data.length) throw new Error('האירוע לא נמצא');
