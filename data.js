@@ -172,7 +172,7 @@
 
   function projectLead(row, role) {
     var closed = row.home_class_closed === true || row.status === 'closed';
-    if (role === 'rabbanit') {
+    if (role === 'rabbanit' || role === 'call_center') {
       return {
         id: row.id,
         name: row.name || '',
@@ -578,7 +578,7 @@
     }
     if (res.error) throw translate(res.error);
     var rows = res.data || [];
-    if (rows.length && profile.role !== 'rabbanit') {
+    if (rows.length && (profile.role === 'admin' || profile.role === 'activist')) {
       var ids = rows.map(function (row) { return row.id; });
       var classRes = await client.from('lead_class_results').select('lead_id,standing_orders,cash,order_status').in('lead_id', ids);
       if (classRes.error) throw translate(classRes.error);
@@ -586,7 +586,7 @@
       (classRes.data || []).forEach(function (row) { classMap[row.lead_id] = row; });
       rows.forEach(function (row) { row.lead_class_results = classMap[row.id]; });
     }
-    if (rows.length && (profile.role === 'admin' || profile.role === 'rabbanit')) {
+    if (rows.length && profile.role !== 'activist') {
       var historyIds = rows.map(function (row) { return row.id; });
       if (profile.role === 'admin') {
         var fin = await client.from('lead_finance').select('lead_id,cost,event_cost,one_time,monthly_amount,order_start').in('lead_id', historyIds);
@@ -620,6 +620,14 @@
     await init();
     requireUser();
     if (profile.role === 'rabbanit') return [];
+    if (profile.role === 'call_center') {
+      var directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name, active').eq('role', 'rabbanit');
+      if (directory.error) {
+        directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name').eq('role', 'rabbanit');
+      }
+      if (directory.error) return [];
+      return (directory.data || []).map(publicUser).filter(function (user) { return user.active !== false; });
+    }
     if (profile.role === 'admin') {
       var listed = await adminUsers({ action: 'list' });
       return userRows(listed).map(publicUser).sort(function (a, b) {
@@ -639,7 +647,7 @@
       await init();
       requireUser();
       input = input || {};
-      if (profile.role === 'rabbanit') {
+      if (profile.role === 'rabbanit' || profile.role === 'call_center') {
         if (!input.id) throw new Error('אין הרשאה לבצע את הפעולה');
         var closed = input.classClosed === true || input.classClosed === 'yes' || input.classClosed === 'כן';
         var rpc = await client.rpc('set_home_class_closed', { p_lead_id: input.id, p_closed: closed });
@@ -698,7 +706,7 @@
       requireAdmin();
       var username = String(input && input.username || '').trim().toLowerCase();
       var name = String(input && input.name || '').trim();
-      var allowedRoles = { admin: true, activist: true, rabbanit: true };
+      var allowedRoles = { admin: true, activist: true, rabbanit: true, call_center: true };
       var role = input && allowedRoles[input.role] ? input.role : '';
       var password = input && input.password ? String(input.password) : '';
       var rabbanitName = String(input && input.rabbanitName || '').trim();
@@ -795,9 +803,9 @@
 
   async function exportCsv() {
     await init();
-    if (!profile || (profile.role !== 'admin' && profile.role !== 'rabbanit')) throw new Error('אין הרשאה לבצע את הפעולה');
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'rabbanit' && profile.role !== 'call_center')) throw new Error('אין הרשאה לבצע את הפעולה');
     var leads = await listLeads();
-    var profiles = profile.role === 'admin' ? await listUsers() : [];
+    var profiles = (profile.role === 'admin' || profile.role === 'call_center') ? await listUsers() : [];
     function rabbanitName(id) {
       var person = profiles.find(function (item) { return item.id === id; });
       if (person) return person.name || person.username;
