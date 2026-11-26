@@ -1,5 +1,5 @@
 /* App-shell cache. CRM/API reads stay network-first and are not stored. */
-var CACHE = 'zohar-shell-v4';
+var CACHE = 'zohar-shell-v6';
 var SHELL = [
   '/',
   '/index.html',
@@ -82,7 +82,7 @@ self.addEventListener('fetch', function (event) {
   if (url.origin !== self.location.origin) return;
   if (event.request.method !== 'GET') return;
   if (url.pathname === '/sw.js') return;
-  if (event.request.mode === 'navigate') {
+  if (url.pathname === '/data.js' || url.pathname === '/biometric.js' || event.request.mode === 'navigate') {
     event.respondWith(networkFirstShell(event.request));
     return;
   }
