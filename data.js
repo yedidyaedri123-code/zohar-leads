@@ -114,11 +114,13 @@
 
   function publicUser(row) {
     return {
-      id: row.id,
+      id: row.id || row.user_id,
       username: row.username,
-      name: row.display_name || row.username,
+      name: row.display_name || row.name || row.username,
       role: row.role,
-      rabbanitName: row.rabbanit_name || ''
+      rabbanitName: row.rabbanit_name || '',
+      active: row.active !== false,
+      createdAt: row.created_at || ''
     };
   }
 
@@ -554,15 +556,29 @@
     return rows.map(function (row) { return projectLead(row, profile.role); });
   }
 
+  function userRows(payload) {
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.users)) return payload.users;
+    if (payload && Array.isArray(payload.data)) return payload.data;
+    return [];
+  }
+
   async function listUsers() {
     await init();
     requireUser();
     if (profile.role === 'rabbanit') return [];
-    var query = client.from('profiles').select('id, username, display_name, role, rabbanit_name').order('display_name');
-    if (profile.role === 'activist') query = query.eq('role', 'rabbanit');
-    var res = await query;
+    if (profile.role === 'admin') {
+      var listed = await adminUsers({ action: 'list' });
+      return userRows(listed).map(publicUser).sort(function (a, b) {
+        return String(a.name || '').localeCompare(String(b.name || ''), 'he');
+      });
+    }
+    var res = await client.from('profiles').select('id, username, display_name, role, rabbanit_name, active').eq('role', 'rabbanit');
+    if (res.error) {
+      res = await client.from('profiles').select('id, username, display_name, role, rabbanit_name').eq('role', 'rabbanit');
+    }
     if (res.error) throw translate(res.error);
-    return (res.data || []).map(publicUser);
+    return (res.data || []).map(publicUser).filter(function (user) { return user.active !== false; });
   }
 
   function saveLead(input) {
@@ -626,13 +642,15 @@
       requireAdmin();
       var username = String(input && input.username || '').trim().toLowerCase();
       var name = String(input && input.name || '').trim();
-      var role = input && input.role === 'rabbanit' ? 'rabbanit' : (input && input.role === 'activist' ? 'activist' : '');
+      var allowedRoles = { admin: true, activist: true, rabbanit: true };
+      var role = input && allowedRoles[input.role] ? input.role : '';
       var password = input && input.password ? String(input.password) : '';
       var rabbanitName = String(input && input.rabbanitName || '').trim();
+      var active = !(input && input.active === false);
+      if (!validUsername(username)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
       if (!name || !role) throw new Error('מלאו את השדות החובה');
       if (role === 'rabbanit' && !rabbanitName) throw new Error('מלאו את שם הרבנית');
       if (input && input.create) {
-        if (!validUsername(username)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
         if (!validPassword(password)) throw new Error('הסיסמה חייבת להיות באורך 8 עד 72 תווים');
         await adminUsers({
           action: 'create',
@@ -640,6 +658,7 @@
           password: password,
           display_name: name,
           role: role,
+          active: active,
           rabbanit_name: role === 'rabbanit' ? rabbanitName : undefined
         });
         return;
@@ -648,8 +667,10 @@
       var body = {
         action: 'update',
         user_id: input.id,
+        username: username,
         display_name: name,
         role: role,
+        active: active,
         rabbanit_name: role === 'rabbanit' ? rabbanitName : null
       };
       if (password) {

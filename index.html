@@ -23,6 +23,7 @@ body { font-family: 'Heebo', sans-serif; background: #f1f5f9; margin: 0; color: 
 .form-group { margin-bottom: 0.9rem; }
 .form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; }
 .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.65rem; border: 1px solid #e2e8f0; border-radius: 8px; font-family: inherit; }
+.form-group input[type="checkbox"] { width: auto; padding: 0; }
 input:disabled, select:disabled, textarea:disabled { background: #f8fafc; color: #334155; opacity: 1; }
 .btn { background: #1e3a8a; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
 .btn:hover { background: #1e40af; }
@@ -194,7 +195,7 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]) .export-allowed { disp
       <div class="toolbar"><button type="button" class="btn" onclick="openAddUser()">+ הוסף משתמש</button></div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>שם משתמש</th><th>שם</th><th>תפקיד</th><th>שיוך לידים</th><th>פעולות</th></tr></thead>
+          <thead><tr><th>שם משתמש</th><th>שם</th><th>תפקיד</th><th>שיוך</th><th>סטטוס</th><th>נוצר</th><th>פעולות</th></tr></thead>
           <tbody id="usersList"></tbody>
         </table>
       </div>
@@ -278,11 +279,13 @@ body:not([data-role="admin"]):not([data-role="rabbanit"]) .export-allowed { disp
       <div class="form-group" id="displayNameGroup"><label>שם להצגה</label><input id="newDisplayName"></div>
       <div class="form-group" id="roleGroup"><label>תפקיד</label>
         <select id="newRole">
+          <option value="admin">מנהל</option>
           <option value="activist">פעיל</option>
           <option value="rabbanit">רבנית</option>
         </select>
       </div>
       <div class="form-group" id="rabbanitNameGroup"><label>שם הרבנית לשיוך</label><input id="newRabbanitName" placeholder="השם שמופיע על החוג"></div>
+      <div class="form-group" id="activeGroup"><label><input type="checkbox" id="newUserActive" checked> משתמש פעיל</label></div>
       <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
         <button type="button" class="btn" style="background:#64748b;" onclick="closeUserModal()">ביטול</button>
         <button type="submit" class="btn">שמירה</button>
@@ -362,7 +365,8 @@ function rabbanitPlain(key) {
   if (!key) return '';
   if (currentUser && key === currentUser.id) return currentUser.name || currentUser.username;
   var user = users.find(function (item) { return item.id === key; });
-  return user ? (user.name || user.username) : '';
+  if (!user) return '';
+  return (user.name || user.username) + (user.active === false ? ' (מושבת)' : '');
 }
 function parseDate(value) {
   var match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -541,7 +545,9 @@ function fillRabbanitSelect(select, selected) {
   var value = selected || '';
   var options = isRabbanit()
     ? [{ id: currentUser.id, name: currentUser.name, username: currentUser.username }]
-    : users.filter(function (user) { return user.role === 'rabbanit'; });
+    : users.filter(function (user) {
+      return user.role === 'rabbanit' && (isAdmin() || user.active !== false);
+    });
   var html = '<option value="">ללא שיוך</option>';
   options.forEach(function (user) {
     html += '<option value="' + esc(user.id) + '">' + esc(user.name || user.username) + '</option>';
@@ -694,15 +700,21 @@ function generateWeeklyReport() {
   document.getElementById('weeklyReport').textContent = text;
   if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { alert('הועתק ללוח!'); });
 }
+function formatUserDate(value) {
+  if (!value) return '-';
+  var date = new Date(value);
+  return isNaN(date.getTime()) ? '-' : date.toLocaleDateString('he-IL');
+}
 function renderUsers() {
   var body = document.getElementById('usersList');
   if (!isAdmin()) { body.innerHTML = ''; return; }
   body.innerHTML = users.map(function (user) {
-    var actions = user.role === 'admin'
-      ? 'מנהל'
-      : '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-id="' + esc(user.id) + '">עריכה</button> <button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" data-action="del" data-id="' + esc(user.id) + '">מחק</button>';
+    var isSelf = currentUser && user.id === currentUser.id;
+    var actions = '<button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" data-action="edit" data-id="' + esc(user.id) + '">עריכה</button>';
+    if (!isSelf) actions += ' <button type="button" class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" data-action="del" data-id="' + esc(user.id) + '">מחק</button>';
     return '<tr><td>' + esc(user.username) + '</td><td>' + esc(user.name) + '</td><td>' + esc(roleLabel(user.role)) + '</td><td>' +
-      (user.role === 'rabbanit' ? esc(user.rabbanitName || user.name) : '-') + '</td><td>' + actions + '</td></tr>';
+      (user.role === 'rabbanit' ? esc(user.rabbanitName || user.name) : '-') + '</td><td>' +
+      (user.active === false ? 'מושבת' : 'פעיל') + '</td><td>' + esc(formatUserDate(user.createdAt)) + '</td><td>' + actions + '</td></tr>';
   }).join('');
   fillWaFilter();
 }
@@ -998,8 +1010,8 @@ function setUserMode(mode) {
   modal.dataset.mode = mode;
   document.getElementById('displayNameGroup').style.display = '';
   document.getElementById('roleGroup').style.display = '';
-  document.getElementById('newUsername').disabled = mode !== 'create';
-  document.getElementById('newUsername').required = mode === 'create';
+  document.getElementById('newUsername').disabled = false;
+  document.getElementById('newUsername').required = true;
   document.getElementById('newPassword').required = mode === 'create';
   document.getElementById('newPassword').minLength = 8;
   document.getElementById('newPassword').maxLength = 72;
@@ -1013,20 +1025,22 @@ function openAddUser() {
   delete document.getElementById('userModal').dataset.userId;
   document.getElementById('userModalTitle').textContent = 'הוספת משתמש';
   setUserMode('create');
+  document.getElementById('newUserActive').checked = true;
   document.getElementById('userModal').classList.add('active');
 }
 function editUser(id) {
   if (!isAdmin()) return;
   var user = users.find(function (item) { return item.id === id; });
-  if (!user || user.role === 'admin') return;
+  if (!user) return;
   document.getElementById('userForm').reset();
   document.getElementById('userModal').dataset.userId = user.id;
   setUserMode('edit');
   setVal('newUsername', user.username);
   setVal('newPassword', '');
   setVal('newDisplayName', user.name || '');
-  setVal('newRole', user.role === 'rabbanit' ? 'rabbanit' : 'activist');
+  setVal('newRole', user.role === 'admin' || user.role === 'rabbanit' ? user.role : 'activist');
   setVal('newRabbanitName', user.rabbanitName || '');
+  document.getElementById('newUserActive').checked = user.active !== false;
   toggleRabbanitName();
   document.getElementById('userModalTitle').textContent = 'עריכת משתמש';
   document.getElementById('userModal').classList.add('active');
@@ -1085,8 +1099,15 @@ async function saveUserForm() {
       name: document.getElementById('newDisplayName').value.trim(),
       role: document.getElementById('newRole').value,
       rabbanitName: document.getElementById('newRabbanitName').value.trim(),
+      active: document.getElementById('newUserActive').checked,
       create: mode === 'create'
     });
+    if (currentUser && document.getElementById('userModal').dataset.userId === currentUser.id) {
+      currentUser.username = username.toLowerCase();
+      currentUser.name = document.getElementById('newDisplayName').value.trim();
+      currentUser.role = document.getElementById('newRole').value;
+      applyRoleUI();
+    }
     await reloadData();
     closeUserModal();
     renderUsers();
@@ -1096,6 +1117,7 @@ async function saveUserForm() {
 }
 async function deleteUser(userId) {
   if (!isAdmin()) return;
+  if (currentUser && userId === currentUser.id) { alert('אי אפשר למחוק את המשתמש המחובר'); return; }
   if (!confirm('למחוק את המשתמש?')) return;
   try {
     await ZoharData.deleteUser(userId);
