@@ -621,12 +621,14 @@
     requireUser();
     if (profile.role === 'rabbanit') return [];
     if (profile.role === 'call_center') {
-      var directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name, active').eq('role', 'rabbanit');
+      var directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name, active');
       if (directory.error) {
-        directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name').eq('role', 'rabbanit');
+        directory = await client.from('profiles').select('id, username, display_name, role, rabbanit_name');
       }
       if (directory.error) return [];
-      return (directory.data || []).map(publicUser).filter(function (user) { return user.active !== false; });
+      return (directory.data || []).map(publicUser).filter(function (user) {
+        return user.role === 'rabbanit' && user.active !== false;
+      });
     }
     if (profile.role === 'admin') {
       var listed = await adminUsers({ action: 'list' });

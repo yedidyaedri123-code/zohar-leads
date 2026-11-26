@@ -936,7 +936,7 @@ function sendWA(id) {
 }
 function sendWAToOpen() {
   if (!isAdmin() && !isLeadClerk()) return;
-  var filter = isAdmin() ? (document.getElementById('waRabbanitFilter').value || '') : '';
+  var filter = isAdmin() ? (document.getElementById('waRabbanitFilter').value || '') : (isCallCenter() ? (document.getElementById('filterRabbanit').value || '') : '');
   var targets = leads.filter(function (lead) { return lead.status === 'open' && (!filter || lead.rabbanit === filter); });
   if (!targets.length) { alert('אין לידים מתאימים'); return; }
   if (!confirm('לפתוח וואטסאפ ל-' + targets.length + ' לידים?')) return;
