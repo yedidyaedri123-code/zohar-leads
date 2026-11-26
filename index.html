@@ -594,7 +594,7 @@ function renderLeads() {
       esc(lead.phone || '') + '</td><td>' + esc(lead.source || '') + '</td>' +
       (isAdmin() ? '<td>₪' + esc(Math.round(Number(lead.cost) || 0)) + '</td>' : '') +
       '<td><span class="status ' + statusClass + '">' + esc(STATUS_TEXT[lead.status] || lead.status || '') + '</span></td>' +
-      (isAdmin() ? '<td>' + esc(lead.standingOrders || 0) + '</td><td>₪' + esc(Math.round(Number(lead.cash) || 0)) + '</td><td>' + esc(ORDER_TEXT[lead.orderStatus] || '-') + '</td>' : '') +
+      (isAdmin() && !isRabbanit() ? '<td>' + esc(lead.standingOrders || 0) + '</td><td>₪' + esc(Math.round(Number(lead.cash) || 0)) + '</td><td>' + esc(ORDER_TEXT[lead.orderStatus] || '-') + '</td>' : '') +
       '<td>' + (lead.classClosed ? 'כן' : 'לא') + '</td><td>' + esc(rabbanitPlain(lead.rabbanit) || '-') + '</td><td>' +
       esc(lead.eventDate ? formatDate(lead.eventDate) : '-') + '</td><td>' + actions + '</td></tr>';
   }).join('') || '<tr><td colspan="12" style="text-align:center;padding:2rem;">אין לידים</td></tr>';

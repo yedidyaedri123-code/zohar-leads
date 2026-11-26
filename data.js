@@ -164,41 +164,46 @@
   }
 
   function projectLead(row, role) {
-    var finance = role === 'admin' ? financeOf(row) : {};
     var closed = row.home_class_closed === true || row.status === 'closed';
+    if (role === 'rabbanit') {
+      return {
+        id: row.id,
+        name: row.name || '',
+        phone: row.phone || '',
+        email: row.email || '',
+        source: row.source || '',
+        status: row.status || 'open',
+        classClosed: closed,
+        rabbanit: row.assigned_rabbanit_id || '',
+        eventDate: row.event_date || '',
+        notes: row.notes || '',
+        createdAt: row.created_at || ''
+      };
+    }
+    var finance = role === 'admin' ? financeOf(row) : {};
     var lead = {
       id: row.id,
       name: row.name || '',
       phone: row.phone || '',
-      email: row.email || '',
-      source: row.source || '',
       status: row.status || 'open',
       classClosed: closed,
       rabbanit: row.assigned_rabbanit_id || '',
       eventDate: row.event_date || '',
-      notes: row.notes || '',
-      createdAt: row.created_at || '',
       standingOrders: num(row.standing_orders, 0),
-      cash: num(row.cash, 0),
-      orderStatus: row.order_status || ''
+      cash: num(row.cash, 0)
     };
     if (role === 'admin') {
+      lead.email = row.email || '';
+      lead.source = row.source || '';
+      lead.notes = row.notes || '';
+      lead.createdAt = row.created_at || '';
+      lead.orderStatus = row.order_status || '';
       lead.cost = num(finance.cost, 0);
       lead.eventCost = num(finance.event_cost, 0);
       lead.oneTime = num(finance.one_time, 0);
       lead.monthlyAmount = num(finance.monthly_amount, 0);
       lead.orderStart = finance.order_start || '';
       lead.history = historyOf(row);
-    } else if (role === 'rabbanit') {
-      lead.history = historyOf(row);
-      delete lead.standingOrders;
-      delete lead.cash;
-      delete lead.orderStatus;
-    } else {
-      delete lead.email;
-      delete lead.source;
-      delete lead.notes;
-      delete lead.createdAt;
     }
     return lead;
   }
@@ -534,15 +539,13 @@
     }
     if (res.error) throw translate(res.error);
     var rows = res.data || [];
-    if ((profile.role === 'admin' || profile.role === 'rabbanit') && rows.length) {
+    if (profile.role === 'admin' && rows.length) {
       var ids = rows.map(function (row) { return row.id; });
-      if (profile.role === 'admin') {
-        var fin = await client.from('lead_finance').select('lead_id,cost,event_cost,one_time,monthly_amount,order_start').in('lead_id', ids);
-        if (fin.error) throw translate(fin.error);
-        var finMap = {};
-        (fin.data || []).forEach(function (row) { finMap[row.lead_id] = row; });
-        rows.forEach(function (row) { row.lead_finance = finMap[row.id]; });
-      }
+      var fin = await client.from('lead_finance').select('lead_id,cost,event_cost,one_time,monthly_amount,order_start').in('lead_id', ids);
+      if (fin.error) throw translate(fin.error);
+      var finMap = {};
+      (fin.data || []).forEach(function (row) { finMap[row.lead_id] = row; });
+      rows.forEach(function (row) { row.lead_finance = finMap[row.id]; });
       var hist = await client.from('lead_history').select('lead_id,user_name,change,created_at').in('lead_id', ids);
       if (!hist.error) {
         var histMap = {};
