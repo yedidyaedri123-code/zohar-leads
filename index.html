@@ -738,8 +738,23 @@ function applyLeadFormMode() {
   document.getElementById('leadName').required = admin;
   document.getElementById('leadPhone').required = admin;
   var history = document.getElementById('historyBox');
-  history.style.display = admin ? '' : 'none';
-  if (!admin) history.innerHTML = '';
+  if (!admin && !isRabbanit()) {
+    history.style.display = 'none';
+    history.innerHTML = '';
+  }
+}
+function fillHistory(lead) {
+  var box = document.getElementById('historyBox');
+  if (!isAdmin() && !isRabbanit()) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  var history = lead && Array.isArray(lead.history) ? lead.history : [];
+  box.style.display = '';
+  box.innerHTML = history.map(function (item) {
+    return '<div>' + esc(item.date) + ' – ' + esc(item.user) + ': ' + esc(item.change) + '</div>';
+  }).join('') || 'אין היסטוריה';
 }
 function openLeadModal(id) {
   if (isActivist() || (!isAdmin() && !isRabbanit())) return;
@@ -750,9 +765,9 @@ function openLeadModal(id) {
     setVal('leadId', '');
     setVal('leadClassClosed', 'no');
     document.getElementById('leadModalTitle').textContent = 'ליד חדש';
-    document.getElementById('historyBox').innerHTML = '';
     fillRabbanitSelect(document.getElementById('leadRabbanit'), '');
     applyLeadFormMode();
+    fillHistory(null);
     modal.classList.add('active');
     return;
   }
@@ -777,14 +792,11 @@ function openLeadModal(id) {
     setVal('leadOneTime', lead.oneTime || 0);
     setVal('leadCost', lead.cost || 0);
     setVal('leadEventCost', lead.eventCost || 0);
-    var history = Array.isArray(lead.history) ? lead.history : [];
-    document.getElementById('historyBox').innerHTML = history.map(function (item) {
-      return '<div>' + esc(item.date) + ' – ' + esc(item.user) + ': ' + esc(item.change) + '</div>';
-    }).join('') || 'אין היסטוריה';
   }
   fillRabbanitSelect(document.getElementById('leadRabbanit'), lead.rabbanit || '');
   document.getElementById('leadModalTitle').textContent = isRabbanit() ? 'עדכון חוג בית' : 'עריכת ליד';
   applyLeadFormMode();
+  fillHistory(lead);
   modal.classList.add('active');
 }
 function closeLeadModal() { document.getElementById('leadModal').classList.remove('active'); }

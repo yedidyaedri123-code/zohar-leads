@@ -144,8 +144,9 @@
     profile = publicUser(res.data);
   }
 
-  function historyOf(row) {
+  function historyOf(row, onlyPublic) {
     var list = Array.isArray(row.lead_history) ? row.lead_history.slice() : [];
+    if (onlyPublic) list = list.filter(function (item) { return item.visibility === 'all'; });
     list.sort(function (a, b) { return String(a.created_at || '').localeCompare(String(b.created_at || '')); });
     return list.map(function (item) {
       var when = item.created_at ? new Date(item.created_at) : null;
@@ -163,6 +164,12 @@
     return finance || {};
   }
 
+  function classResultsOf(row) {
+    var results = row.lead_class_results;
+    if (Array.isArray(results)) results = results[0];
+    return results || {};
+  }
+
   function projectLead(row, role) {
     var closed = row.home_class_closed === true || row.status === 'closed';
     if (role === 'rabbanit') {
@@ -177,10 +184,12 @@
         rabbanit: row.assigned_rabbanit_id || '',
         eventDate: row.event_date || '',
         notes: row.notes || '',
-        createdAt: row.created_at || ''
+        createdAt: row.created_at || '',
+        history: historyOf(row, true)
       };
     }
     var finance = role === 'admin' ? financeOf(row) : {};
+    var results = classResultsOf(row);
     var lead = {
       id: row.id,
       name: row.name || '',
@@ -189,21 +198,21 @@
       classClosed: closed,
       rabbanit: row.assigned_rabbanit_id || '',
       eventDate: row.event_date || '',
-      standingOrders: num(row.standing_orders, 0),
-      cash: num(row.cash, 0)
+      standingOrders: num(results.standing_orders, 0),
+      cash: num(results.cash, 0)
     };
     if (role === 'admin') {
       lead.email = row.email || '';
       lead.source = row.source || '';
       lead.notes = row.notes || '';
       lead.createdAt = row.created_at || '';
-      lead.orderStatus = row.order_status || '';
+      lead.orderStatus = results.order_status || '';
       lead.cost = num(finance.cost, 0);
       lead.eventCost = num(finance.event_cost, 0);
       lead.oneTime = num(finance.one_time, 0);
       lead.monthlyAmount = num(finance.monthly_amount, 0);
       lead.orderStart = finance.order_start || '';
-      lead.history = historyOf(row);
+      lead.history = historyOf(row, false);
     }
     return lead;
   }
@@ -225,8 +234,6 @@
     var opened = input.classClosed === false || input.classClosed === 'no' || input.classClosed === 'לא';
     if (closed) status = 'closed';
     else if (opened && status === 'closed') status = 'open';
-    var order = input.orderStatus == null ? '' : String(input.orderStatus);
-    if (['active', 'inactive', 'pending'].indexOf(order) < 0) order = '';
     var assigned = profiles ? matchRabbanit(input.rabbanit, profiles) : (function () {
       var text = String(input.rabbanit || '').trim();
       if (!text) return null;
@@ -239,12 +246,19 @@
       email: String(input.email || '').trim() || null,
       source: String(input.source || '').trim(),
       status: status,
-      standing_orders: Math.max(0, Math.round(num(input.standingOrders, 0))),
-      order_status: order || null,
-      cash: Math.max(0, num(input.cash, 0)),
       event_date: dateOrNull(input.eventDate),
       assigned_rabbanit_id: assigned,
       notes: String(input.notes == null ? '' : input.notes)
+    };
+  }
+
+  function classResultsFrom(input) {
+    var order = input.orderStatus == null ? '' : String(input.orderStatus);
+    if (['active', 'inactive', 'pending'].indexOf(order) < 0) order = '';
+    return {
+      standing_orders: Math.max(0, Math.round(num(input.standingOrders, 0))),
+      cash: Math.max(0, num(input.cash, 0)),
+      order_status: order || null
     };
   }
 
@@ -258,12 +272,36 @@
     };
   }
 
+  async function syncClassResults(leadId, results) {
+    var updated = await client.from('lead_class_results').update(results).eq('lead_id', leadId).select('lead_id');
+    if (updated.error) throw translate(updated.error);
+    if (updated.data && updated.data.length) return;
+    var inserted = await client.from('lead_class_results').upsert(Object.assign({ lead_id: leadId }, results), { onConflict: 'lead_id' });
+    if (inserted.error) throw translate(inserted.error);
+  }
+
   async function syncFinance(leadId, finance) {
     var updated = await client.from('lead_finance').update(finance).eq('lead_id', leadId).select('lead_id');
     if (updated.error) throw translate(updated.error);
     if (updated.data && updated.data.length) return;
     var inserted = await client.from('lead_finance').upsert(Object.assign({ lead_id: leadId }, finance), { onConflict: 'lead_id' });
     if (inserted.error) throw translate(inserted.error);
+  }
+
+  function edgeError(response, payload) {
+    var code = payload && (payload.error || payload.code || payload.message || '');
+    code = String(code || '');
+    var messages = {
+      username_taken: 'שם המשתמש כבר תפוס',
+      cannot_change_own_role: 'אי אפשר לשנות את התפקיד של עצמך',
+      cannot_disable_self: 'אי אפשר להשבית את החשבון של עצמך',
+      cannot_delete_self: 'אי אפשר למחוק את המשתמש המחובר',
+      user_banned: 'החשבון הזה מושבת. פנו למנהל.'
+    };
+    if (messages[code]) return new Error(messages[code]);
+    if (response.status === 409) return new Error(messages.username_taken);
+    if (response.status === 401 || response.status === 403) return new Error('אין הרשאה לבצע את הפעולה');
+    return new Error('הפעולה נכשלה');
   }
 
   async function accessToken() {
@@ -291,12 +329,7 @@
     }
     var payload = null;
     try { payload = await response.json(); } catch (err) { payload = null; }
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) throw new Error('אין הרשאה לבצע את הפעולה');
-      var message = payload && (payload.message || payload.error || payload.msg);
-      if (typeof message === 'string' && message) throw new Error(message);
-      throw new Error('הפעולה נכשלה');
-    }
+    if (!response.ok) throw edgeError(response, payload);
     return payload || {};
   }
 
@@ -441,7 +474,10 @@
     var row = payloadFrom(input, profiles || null);
     var inserted = await client.from('leads').insert(row).select('id').single();
     if (inserted.error) throw translate(inserted.error);
-    if (profile.role === 'admin') await syncFinance(inserted.data.id, financeFrom(input));
+    if (profile.role === 'admin') {
+      await syncFinance(inserted.data.id, financeFrom(input));
+      await syncClassResults(inserted.data.id, classResultsFrom(input));
+    }
     return inserted.data.id;
   }
 
@@ -471,6 +507,7 @@
     client.channel('zohar-crm')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, scheduleNotify)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_finance' }, scheduleNotify)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_class_results' }, scheduleNotify)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'lead_history' }, scheduleNotify)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, scheduleNotify)
       .subscribe();
@@ -508,7 +545,11 @@
     if (!validUsername(name)) throw new Error('שם המשתמש חייב להיות באנגלית (אותיות, מספרים, נקודה, מקף או קו תחתון, 3–32 תווים)');
     if (!password) throw new Error('הזינו סיסמה');
     var res = await client.auth.signInWithPassword({ email: name + '@zohar.local', password: String(password) });
-    if (res.error || !res.data || !res.data.user) throw new Error('שם משתמש או סיסמה שגויים');
+    if (res.error || !res.data || !res.data.user) {
+      var code = res.error && (res.error.code || res.error.message || '');
+      if (code === 'user_banned' || /user_banned/i.test(String(code))) throw new Error('החשבון הזה מושבת. פנו למנהל.');
+      throw new Error('שם משתמש או סיסמה שגויים');
+    }
     try {
       await loadProfile(res.data.user.id);
     } catch (err) {
@@ -529,24 +570,33 @@
     await init();
     requireUser();
     var columns = profile.role === 'activist'
-      ? 'id,name,phone,status,standing_orders,cash,event_date,assigned_rabbanit_id,home_class_closed'
-      : (profile.role === 'rabbanit'
-        ? 'id,name,phone,email,source,status,event_date,assigned_rabbanit_id,notes,created_at,home_class_closed'
-        : 'id,name,phone,email,source,status,standing_orders,order_status,cash,event_date,assigned_rabbanit_id,notes,created_at,home_class_closed');
+      ? 'id,name,phone,status,event_date,assigned_rabbanit_id,home_class_closed'
+      : 'id,name,phone,email,source,status,event_date,assigned_rabbanit_id,notes,created_at,home_class_closed';
     var res = await client.from('leads').select(columns).order('created_at', { ascending: false });
     if (res.error && columns.indexOf('home_class_closed') >= 0) {
       res = await client.from('leads').select(columns.replace(',home_class_closed', '')).order('created_at', { ascending: false });
     }
     if (res.error) throw translate(res.error);
     var rows = res.data || [];
-    if (profile.role === 'admin' && rows.length) {
+    if (rows.length && profile.role !== 'rabbanit') {
       var ids = rows.map(function (row) { return row.id; });
-      var fin = await client.from('lead_finance').select('lead_id,cost,event_cost,one_time,monthly_amount,order_start').in('lead_id', ids);
-      if (fin.error) throw translate(fin.error);
-      var finMap = {};
-      (fin.data || []).forEach(function (row) { finMap[row.lead_id] = row; });
-      rows.forEach(function (row) { row.lead_finance = finMap[row.id]; });
-      var hist = await client.from('lead_history').select('lead_id,user_name,change,created_at').in('lead_id', ids);
+      var classRes = await client.from('lead_class_results').select('lead_id,standing_orders,cash,order_status').in('lead_id', ids);
+      if (classRes.error) throw translate(classRes.error);
+      var classMap = {};
+      (classRes.data || []).forEach(function (row) { classMap[row.lead_id] = row; });
+      rows.forEach(function (row) { row.lead_class_results = classMap[row.id]; });
+    }
+    if (rows.length && (profile.role === 'admin' || profile.role === 'rabbanit')) {
+      var historyIds = rows.map(function (row) { return row.id; });
+      if (profile.role === 'admin') {
+        var fin = await client.from('lead_finance').select('lead_id,cost,event_cost,one_time,monthly_amount,order_start').in('lead_id', historyIds);
+        if (fin.error) throw translate(fin.error);
+        var finMap = {};
+        (fin.data || []).forEach(function (row) { finMap[row.lead_id] = row; });
+        rows.forEach(function (row) { row.lead_finance = finMap[row.id]; });
+      }
+      var hist = await client.from('lead_history').select('lead_id,user_name,change,created_at,visibility').in('lead_id', historyIds);
+      if (hist.error) hist = await client.from('lead_history').select('lead_id,user_name,change,created_at').in('lead_id', historyIds);
       if (!hist.error) {
         var histMap = {};
         (hist.data || []).forEach(function (row) {
@@ -603,6 +653,7 @@
         if (updated.error) throw translate(updated.error);
         if (!updated.data || !updated.data.length) throw new Error('הליד לא נמצא');
         await syncFinance(input.id, financeFrom(input));
+        await syncClassResults(input.id, classResultsFrom(input));
         return;
       }
       await insertLead(input, null);
@@ -620,12 +671,14 @@
       var assigned = String(patch && patch.rabbanit || '').trim();
       if (assigned && !UUID.test(assigned)) throw new Error('בחרו רבנית מהרשימה');
       var res = await client.from('leads').update({
-        standing_orders: Math.round(orders),
-        cash: cash,
         assigned_rabbanit_id: assigned || null
       }).eq('id', id).select('id');
       if (res.error) throw translate(res.error);
       if (!res.data || !res.data.length) throw new Error('האירוע לא נמצא');
+      await syncClassResults(id, {
+        standing_orders: Math.round(orders),
+        cash: cash
+      });
     });
   }
 
