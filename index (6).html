@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>לידים</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+body { font-family: 'Heebo', sans-serif; background: #f1f5f9; margin: 0; color: #1e293b; }
+.login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1e3a8a, #3b82f6); }
+.login-box { background: white; padding: 2rem; border-radius: 16px; width: 90%; max-width: 380px; }
+.login-box h1 { text-align: center; color: #1e3a8a; margin: 0 0 1.5rem; }
+.form-group { margin-bottom: 0.9rem; }
+.form-group label { display: block; margin-bottom: 0.3rem; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.65rem; border: 1px solid #e2e8f0; border-radius: 8px; font-family: inherit; }
+.btn { background: #1e3a8a; color: white; border: none; padding: 0.65rem 1.1rem; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
+.btn:hover { background: #1e40af; }
+.btn-wa { background: #25D366; }
+.btn-outline { background: transparent; color: #1e3a8a; border: 1.5px solid #1e3a8a; }
+.header { background: #1e3a8a; color: white; padding: 1rem 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+.container { max-width: 1400px; margin: 0 auto; padding: 1rem; }
+.tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.tab { padding: 0.6rem 1rem; background: white; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-weight: 600; }
+.tab.active { background: #1e3a8a; color: white; }
+.hidden { display: none !important; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.7rem; margin-bottom: 1rem; }
+.stat-card { background: white; border-radius: 10px; padding: 0.9rem; text-align: center; }
+.stat-card .num { font-size: 1.5rem; font-weight: 700; color: #1e3a8a; }
+.toolbar { background: white; padding: 0.7rem; border-radius: 10px; margin-bottom: 1rem; display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; }
+th, td { padding: 0.7rem; text-align: right; border-bottom: 1px solid #e2e8f0; font-size: 0.9rem; }
+th { background: #f8fafc; }
+.status { padding: 0.2rem 0.5rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+.status.open { background: #dbeafe; color: #1d4ed8; }
+.status.closed { background: #d1fae5; color: #065f46; }
+.status.not-closed { background: #fee2e2; color: #991b1b; }
+.status.cancelled { background: #f3e8ff; color: #6b21a8; }
+.urgent { background: #fef2f2 !important; }
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+.modal.active { display: flex; }
+.modal-content { background: white; padding: 1.3rem; border-radius: 12px; width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
+.report-card { background: white; border-radius: 10px; padding: 1rem; margin-bottom: 0.7rem; }
+.cal-item { background: white; border-radius: 8px; padding: 0.8rem; margin-bottom: 0.5rem; border-right: 4px solid #1e3a8a; }
+</style>
+</head>
+<body>
+
+<div id="loginScreen" class="login-screen">
+  <div class="login-box">
+    <h1>לידים</h1>
+    <div style="text-align:center; margin-bottom:1rem;">
+      <img src="https://zohar-harashbi.co.il/wp-content/uploads/cropped-%D7%AA%D7%9E%D7%95%D7%A0%D7%94_%D7%A9%D7%9C_WhatsApp__2025-07-30_%D7%91%D7%A9%D7%A2%D7%94_10.04.33_da67cc47-removebg-preview.png" alt="לוגו" style="height:80px;">
+    </div>
+    <div class="form-group"><label>שם משתמש</label><input type="text" id="loginUser" placeholder="שם משתמש" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('loginPass').focus();}"></div>
+    <div class="form-group"><label>סיסמה</label><input type="password" id="loginPass" placeholder="סיסמה" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin();}"></div>
+    <button class="btn" style="width:100%;" onclick="doLogin()">כניסה</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <div class="header">
+    <div>
+      <h1 style="margin:0; font-size:1.3rem;">לידים</h1>
+      <small id="userInfo"></small>
+    </div>
+    <button class="btn" style="background:transparent; border:1px solid white;" onclick="doLogout()">יציאה</button>
+  </div>
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('leads')">לידים</button>
+      <button class="tab" onclick="switchTab('reports')">דוחות + ROI</button>
+      <button class="tab" onclick="switchTab('calendar')">לוח שנה</button>
+      <button class="tab" onclick="switchTab('whatsapp')">וואטסאפ</button>
+      <button class="tab" onclick="switchTab('users')">ניהול משתמשים</button>
+    </div>
+
+    <div id="panel-leads">
+      <div class="stats" id="stats"></div>
+      <div class="toolbar">
+        <button class="btn" onclick="openLeadModal()">+ הוסף ליד חדש</button>
+        <input type="text" id="search" placeholder="חיפוש..." oninput="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
+        <select id="filterStatus" onchange="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
+          <option value="">כל הסטטוסים</option>
+          <option value="open">פתוח</option>
+          <option value="closed">נסגר</option>
+          <option value="not-closed">לא נסגר</option>
+          <option value="cancelled">ביטל</option>
+        </select>
+        <select id="filterRabbanit" onchange="renderLeads()" style="padding:0.5rem; border-radius:6px; border:1px solid #e2e8f0;">
+          <option value="">כל הרבניות</option>
+        </select>
+        <button class="btn" style="background:#0f766e;" onclick="openSheetsModal()">סנכרון גוגל שיטס</button>
+        <button class="btn btn-outline" onclick="exportCSV()">ייצוא</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>שם</th><th>טלפון</th><th>מקור</th><th id="costHeader">עלות</th><th>סטטוס</th><th>הוראות קבע</th><th>מזומן</th><th>סטטוס קבע</th><th>רבנית</th><th>תאריך חוג</th><th>פעולות</th></tr>
+        </thead>
+        <tbody id="leadsBody"></tbody>
+      </table>
+    </div>
+
+    <div id="panel-reports" class="hidden">
+      <h2>דוחות + ROI</h2>
+      <div id="roiBox" class="report-card"></div>
+      <div id="reportsContainer"></div>
+      <button class="btn" style="margin-top:1rem;" onclick="generateWeeklyReport()">צור דוח שבועי</button>
+      <div id="weeklyReport" style="margin-top:1rem; background:white; padding:1rem; border-radius:10px; white-space:pre-wrap;"></div>
+    </div>
+
+    <div id="panel-calendar" class="hidden">
+      <h2>לוח שנה – חוגים קרובים</h2>
+      <div id="calendarContainer"></div>
+    </div>
+
+    <div id="panel-whatsapp" class="hidden">
+      <h2>תבניות וואטסאפ</h2>
+      <div class="report-card">
+        <select id="templateSelect" onchange="loadTemplate()" style="margin-bottom:0.5rem; padding:0.5rem; width:100%;">
+          <option value="invite">הזמנה לחוג בית</option>
+          <option value="reminder">תזכורת</option>
+          <option value="thanks">תודה אחרי חוג</option>
+        </select>
+        <select id="waRabbanitFilter" style="margin-bottom:0.5rem; padding:0.5rem; width:100%;">
+          <option value="">כל הרבניות / כל החוגים</option>
+        </select>
+        <textarea id="waTemplate" rows="6" style="width:100%;"></textarea>
+        <p style="font-size:0.85rem; color:#64748b;">משתנים: {name}, {rabbanit}, {date}</p>
+        <button class="btn btn-wa" onclick="sendWAToOpen()">שלח לפי בחירה</button>
+      </div>
+    </div>
+
+    <div id="panel-users" class="hidden">
+      <h2>ניהול משתמשים</h2>
+      <div class="toolbar"><button class="btn" onclick="openAddUser()">+ הוסף משתמש</button></div>
+      <table>
+        <thead><tr><th>שם משתמש</th><th>שם</th><th>שיוך</th><th>פעולות</th></tr></thead>
+        <tbody id="usersList"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Modal -->
+<div class="modal" id="leadModal">
+  <div class="modal-content">
+    <h3 id="leadModalTitle">ליד חדש</h3>
+    <form onsubmit="saveLead(event)">
+      <input type="hidden" id="leadId">
+      <div class="form-group"><label>שם</label><input id="leadName" required></div>
+      <div class="form-group"><label>טלפון</label><input id="leadPhone" required></div>
+      <div class="form-group"><label>אימייל</label><input id="leadEmail" type="email"></div>
+      <div class="form-group"><label>מקור / קמפיין</label><input id="leadSource"></div>
+      <div class="form-group"><label>עלות (₪)</label><input id="leadCost" type="number" value="0"></div>
+      <div class="form-group"><label>סטטוס</label>
+        <select id="leadStatus">
+          <option value="open">פתוח</option>
+          <option value="closed">נסגר חוג בית</option>
+          <option value="not-closed">לא נסגר</option>
+          <option value="cancelled">ביטל</option>
+        </select>
+      </div>
+      <div class="form-group"><label>הוראות קבע (מספר)</label><input id="leadOrders" type="number" value="0"></div>
+      <div class="form-group"><label>מזומן שהתקבל בערב (₪)</label><input id="leadCash" type="number" value="0"></div>
+      <div class="form-group"><label>סטטוס הוראת קבע</label>
+        <select id="leadOrderStatus">
+          <option value="">לא רלוונטי</option>
+          <option value="active">פעילה</option>
+          <option value="inactive">לא פעילה</option>
+          <option value="pending">ממתינה</option>
+        </select>
+      </div>
+      <div class="form-group"><label>סכום חודשי מהוראת קבע (₪)</label><input id="leadMonthlyAmount" type="number" value="0"></div>
+      <div class="form-group"><label>רבנית</label><input id="leadRabbanit"></div>
+      <div class="form-group"><label>תאריך חוג בית</label><input id="leadEventDate" type="date"></div>
+      <div class="form-group"><label>הערות</label><textarea id="leadNotes" rows="2"></textarea></div>
+      <div id="historyBox" style="margin:0.5rem 0; max-height:100px; overflow-y:auto; font-size:0.8rem; color:#64748b;"></div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <button type="button" class="btn" style="background:#64748b;" onclick="closeLeadModal()">ביטול</button>
+        <button type="submit" class="btn">שמירה</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- User Modal -->
+<div class="modal" id="userModal">
+  <div class="modal-content">
+    <h3>הוספת רבנית</h3>
+    <form onsubmit="saveNewUser(event)">
+      <div class="form-group"><label>שם משתמש</label><input id="newUsername" required></div>
+      <div class="form-group"><label>סיסמה</label><input id="newPassword" required></div>
+      <div class="form-group"><label>שם להצגה</label><input id="newDisplayName" required></div>
+      <div class="form-group"><label>שם לשיוך (לרבנית)</label><input id="newRabbanit" placeholder="השאר ריק לפעיל"></div>
+      <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+        <button type="button" class="btn" style="background:#64748b;" onclick="closeUserModal()">ביטול</button>
+        <button type="submit" class="btn">שמירה</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Sheets Modal -->
+<div class="modal" id="sheetsModal">
+  <div class="modal-content">
+    <h3>סנכרון מגוגל שיטס</h3>
+    <div class="form-group"><label>קישור הגיליון</label><input id="sheetsUrl"></div>
+    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+      <button type="button" class="btn" style="background:#64748b;" onclick="document.getElementById('sheetsModal').classList.remove('active')">סגור</button>
+      <button class="btn" onclick="syncSheets()">סנכרן</button>
+    </div>
+    <div id="syncStatus"></div>
+  </div>
+</div>
+
+<script>
+const TEMPLATES = {
+  invite: `שלום {name},\nאנחנו מזוהר הרשבי שמחים להזמין אותך לחוג בית של הפרשת חלה אצל הרבנית {rabbanit}.\nנשמח לשמוע ממך!`,
+  reminder: `שלום {name},\nתזכורת: החוג בית אצל הרבנית {rabbanit} מתקיים בקרוב.\nנשמח לראותך!`,
+  thanks: `שלום {name},\nתודה שהשתתפת בחוג הבית של הרבנית {rabbanit}!\nנשמח אם תוכלי להמליץ לחברות נוספות.`
+};
+
+let leads = JSON.parse(localStorage.getItem('zohar_leads') || '[]');
+let users = JSON.parse(localStorage.getItem('zohar_users') || '{}');
+if (!users['מנהל']) {
+  users['מנהל'] = { pass: 'מנהל123', name: 'מנהל', role: 'admin', rabbanit: '' };
+}
+if (!users['פעיל']) {
+  users['פעיל'] = { pass: 'פעיל123', name: 'פעיל', role: 'operator', rabbanit: '' };
+}
+if (users['מפעילה']) delete users['מפעילה'];
+localStorage.setItem('zohar_users', JSON.stringify(users));
+let currentUser = null;
+
+function isAdmin() {
+  return currentUser && currentUser.role === 'admin';
+}
+
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (users[u] && users[u].pass === p) {
+    currentUser = { ...users[u], username: u };
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.getElementById('userInfo').textContent = 'שלום ' + currentUser.name + (isAdmin() ? ' (מנהל)' : (currentUser.role === 'operator' ? ' (פעיל)' : ' (רבנית)'));
+    // Hide financial tabs/elements for non-admin
+    const reportsTab = document.querySelector('.tab[onclick*="reports"]');
+    if (reportsTab) reportsTab.style.display = isAdmin() ? '' : 'none';
+    const usersTab = document.querySelector('.tab[onclick*="users"]');
+    if (usersTab) usersTab.style.display = isAdmin() ? '' : 'none';
+    loadTemplate();
+    renderLeads();
+    if (isAdmin()) renderUsers();
+  } else alert('שם משתמש או סיסמה שגויים');
+}
+
+function doLogout() {
+  currentUser = null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  ['leads','reports','calendar','whatsapp','users'].forEach(p => {
+    const el = document.getElementById('panel-' + p);
+    if (el) el.classList.toggle('hidden', p !== name);
+  });
+  if (name === 'reports') renderReports();
+  if (name === 'calendar') renderCalendar();
+  if (name === 'users') renderUsers();
+}
+
+function saveLeads() { localStorage.setItem('zohar_leads', JSON.stringify(leads)); }
+
+function updateStats() {
+  const total = leads.length;
+  const closed = leads.filter(l => l.status === 'closed').length;
+  const activeOrders = leads.filter(l => l.orderStatus === 'active').length;
+  let html = `
+    <div class="stat-card"><div class="num">${total}</div><div>לידים</div></div>
+    <div class="stat-card"><div class="num">${closed}</div><div>חוגים שנסגרו</div></div>
+    <div class="stat-card"><div class="num">${activeOrders}</div><div>הוראות קבע פעילות</div></div>
+  `;
+  if (isAdmin()) {
+    const monthlyIncome = leads.filter(l => l.orderStatus === 'active').reduce((s,l) => s + (+l.monthlyAmount||0), 0);
+    const totalCost = leads.reduce((s,l) => s + (+l.cost||0), 0);
+    html += `
+      <div class="stat-card"><div class="num">₪${monthlyIncome.toFixed(0)}</div><div>הכנסה חודשית</div></div>
+      <div class="stat-card"><div class="num">₪${totalCost.toFixed(0)}</div><div>עלות פרסום</div></div>
+    `;
+  }
+  document.getElementById('stats').innerHTML = html;
+}
+
+function updateRabbanitFilter() {
+  const select = document.getElementById('filterRabbanit');
+  if (!select) return;
+  const current = select.value;
+  const names = [...new Set(leads.map(l => l.rabbanit).filter(Boolean))];
+  select.innerHTML = '<option value="">כל הרבניות</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
+  select.value = current;
+}
+
+function renderLeads() {
+  const search = (document.getElementById('search')?.value || '').toLowerCase();
+  const st = document.getElementById('filterStatus')?.value || '';
+  const rab = document.getElementById('filterRabbanit')?.value || '';
+  let filtered = leads.filter(l => {
+    if (currentUser?.role === 'rabbanit' && currentUser.rabbanit && l.rabbanit !== currentUser.rabbanit) return false;
+    const okS = !search || l.name.toLowerCase().includes(search) || (l.phone||'').includes(search);
+    const okSt = !st || l.status === st;
+    const okR = !rab || l.rabbanit === rab;
+    return okS && okSt && okR;
+  });
+  const statusText = { open:'פתוח', closed:'נסגר', 'not-closed':'לא נסגר', cancelled:'ביטל' };
+  const orderText = { active:'פעילה', inactive:'לא פעילה', pending:'ממתינה' };
+  const now = Date.now();
+  document.getElementById('leadsBody').innerHTML = filtered.map(l => {
+    const daysOpen = l.status === 'open' ? Math.floor((now - new Date(l.createdAt)) / (24*60*60*1000)) : 0;
+    const urgentClass = daysOpen > 3 ? 'urgent' : '';
+    const costCell = isAdmin() ? `<td>₪${(+l.cost||0).toFixed(0)}</td>` : '';
+    return `
+    <tr class="${urgentClass}">
+      <td><strong>${l.name}</strong>${daysOpen > 3 ? ' <span style="color:#dc2626;font-size:0.7rem;">('+daysOpen+' ימים)</span>' : ''}</td>
+      <td>${l.phone||''}</td>
+      <td>${l.source||''}</td>
+      ${costCell}
+      <td><span class="status ${l.status}">${statusText[l.status]||l.status}</span></td>
+      <td>${l.standingOrders||0}</td>
+      <td>₪${(+l.cash||0).toFixed(0)}</td>
+      <td>${orderText[l.orderStatus]||'-'}</td>
+      <td>${l.rabbanit||'-'}</td>
+      <td>${l.eventDate ? new Date(l.eventDate).toLocaleDateString('he-IL') : '-'}</td>
+      <td>
+        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="editLead('${l.id}')">עריכה</button>
+        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#64748b;" onclick="copyLead('${l.id}')">העתק</button>
+        <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#f59e0b;" onclick="quickNote('${l.id}')">הערה</button>
+        <button class="btn btn-wa" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="sendWA('${l.id}')">וואטסאפ</button>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:2rem;">אין לידים</td></tr>';
+  updateStats();
+  updateRabbanitFilter();
+  // Hide cost column for non-admin
+  const costHeader = document.getElementById('costHeader');
+  if (costHeader) costHeader.style.display = isAdmin() ? '' : 'none';
+}
+
+function renderCalendar() {
+  const upcoming = leads
+    .filter(l => l.eventDate && new Date(l.eventDate) >= new Date().setHours(0,0,0,0))
+    .sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate));
+  document.getElementById('calendarContainer').innerHTML = upcoming.length
+    ? upcoming.map(l => `<div class="cal-item"><strong>${new Date(l.eventDate).toLocaleDateString('he-IL')}</strong> – ${l.name} (${l.rabbanit||'ללא רבנית'})<br><small>${l.phone||''}</small></div>`).join('')
+    : '<p>אין חוגים קרובים מתוכננים</p>';
+}
+
+function copyLead(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  const text = `${l.name}\n${l.phone}`;
+  navigator.clipboard.writeText(text).then(() => alert('הועתק: ' + l.name));
+}
+
+function quickNote(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  const note = prompt('הערה מהירה:', l.notes || '');
+  if (note !== null) {
+    l.notes = note;
+    if (!l.history) l.history = [];
+    l.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: 'הערה עודכנה' });
+    saveLeads();
+    renderLeads();
+  }
+}
+
+function renderReports() {
+  const totalAdCost = leads.reduce((s,l) => s + (+l.cost||0), 0);
+  const totalEventCost = leads.reduce((s,l) => s + (+l.eventCost||0), 0);
+  const totalCost = totalAdCost + totalEventCost;
+  const oneTimeIncome = leads.reduce((s,l) => s + (+l.oneTime||0), 0);
+  
+  // Calculate months active for standing orders
+  let standingIncome = 0;
+  leads.filter(l => l.orderStatus === 'active' && l.orderStart).forEach(l => {
+    const start = new Date(l.orderStart);
+    const months = Math.max(1, Math.round((new Date() - start) / (30*24*60*60*1000)));
+    standingIncome += (+l.monthlyAmount||0) * months;
+  });
+  // Also add active orders without start date (assume 1 month)
+  leads.filter(l => l.orderStatus === 'active' && !l.orderStart).forEach(l => {
+    standingIncome += (+l.monthlyAmount||0);
+  });
+
+  const totalIncome = standingIncome + oneTimeIncome;
+  const net = totalIncome - totalCost;
+  const roi = totalCost > 0 ? (net / totalCost * 100).toFixed(0) : 0;
+
+  document.getElementById('roiBox').innerHTML = `
+    <h3>דוח ROI מדויק</h3>
+    <p>עלות פרסום: <strong>₪${totalAdCost.toFixed(0)}</strong></p>
+    <p>עלות קיום חוגים: <strong>₪${totalEventCost.toFixed(0)}</strong></p>
+    <p>סה"כ עלויות: <strong>₪${totalCost.toFixed(0)}</strong></p>
+    <hr>
+    <p>הכנסה מהוראות קבע (עד היום): <strong>₪${standingIncome.toFixed(0)}</strong></p>
+    <p>תרומות חד-פעמיות: <strong>₪${oneTimeIncome.toFixed(0)}</strong></p>
+    <p>סה"כ הכנסות: <strong>₪${totalIncome.toFixed(0)}</strong></p>
+    <hr>
+    <p>רווח נקי: <strong>₪${net.toFixed(0)}</strong></p>
+    <p>ROI: <strong>${roi}%</strong></p>
+  `;
+  const by = {};
+  leads.forEach(l => {
+    const r = l.rabbanit || 'ללא שיוך';
+    if (!by[r]) by[r] = {leads:0, closed:0, active:0, income:0};
+    by[r].leads++;
+    if (l.status === 'closed') by[r].closed++;
+    if (l.orderStatus === 'active') { by[r].active++; by[r].income += (+l.monthlyAmount||0); }
+  });
+  let html = '';
+  for (const [name, d] of Object.entries(by)) {
+    html += `<div class="report-card"><h3>${name}</h3><p>לידים: ${d.leads} | חוגים: ${d.closed} | הוראות קבע פעילות: ${d.active} | הכנסה חודשית: ₪${d.income.toFixed(0)}</p></div>`;
+  }
+  document.getElementById('reportsContainer').innerHTML = html || '<p>אין נתונים</p>';
+  
+  // Conversion stats by source
+  const bySource = {};
+  leads.forEach(l => {
+    const s = l.source || 'אחר';
+    if (!bySource[s]) bySource[s] = { total: 0, closed: 0 };
+    bySource[s].total++;
+    if (l.status === 'closed') bySource[s].closed++;
+  });
+  let sourceHtml = '<h3 style="margin-top:1.5rem;">דוח לפי מקור</h3>';
+  for (const [name, d] of Object.entries(bySource)) {
+    const rate = d.total ? Math.round(d.closed / d.total * 100) : 0;
+    sourceHtml += `<div class="report-card"><strong>${name}</strong>: ${d.total} לידים | ${d.closed} חוגים | המרה: ${rate}%</div>`;
+  }
+  
+  // Average standing orders per closed event
+  const closedLeads = leads.filter(l => l.status === 'closed');
+  const avgOrders = closedLeads.length ? (closedLeads.reduce((s,l) => s + (+l.standingOrders||0), 0) / closedLeads.length).toFixed(1) : 0;
+  sourceHtml += `<div class="report-card" style="margin-top:1rem;"><strong>ממוצע הוראות קבע לחוג שנסגר:</strong> ${avgOrders}</div>`;
+  
+  document.getElementById('reportsContainer').innerHTML += sourceHtml;
+}
+
+function generateWeeklyReport() {
+  const text = `דוח שבועי זוהר CRM\nתאריך: ${new Date().toLocaleDateString('he-IL')}\nסה"כ לידים: ${leads.length}\nחוגים שנסגרו: ${leads.filter(l=>l.status==='closed').length}\nהוראות קבע פעילות: ${leads.filter(l=>l.orderStatus==='active').length}`;
+  document.getElementById('weeklyReport').textContent = text;
+  navigator.clipboard.writeText(text).then(() => alert('הועתק ללוח!'));
+}
+
+function openLeadModal(id) {
+  document.getElementById('leadModal').classList.add('active');
+  // Hide financial fields for non-admin
+  const financialFields = ['leadCost', 'leadMonthlyAmount', 'leadOneTime', 'leadEventCost', 'leadOrderStart'];
+  financialFields.forEach(fid => {
+    const el = document.getElementById(fid);
+    if (el) {
+      const group = el.closest('.form-group');
+      if (group) group.style.display = isAdmin() ? '' : 'none';
+    }
+  });
+  const historyBox = document.getElementById('historyBox');
+  if (id) {
+    const l = leads.find(x => x.id === id);
+    document.getElementById('leadId').value = l.id;
+    document.getElementById('leadName').value = l.name;
+    document.getElementById('leadPhone').value = l.phone||'';
+    document.getElementById('leadEmail').value = l.email||'';
+    document.getElementById('leadSource').value = l.source||'';
+    document.getElementById('leadCost').value = l.cost||0;
+    document.getElementById('leadStatus').value = l.status||'open';
+    document.getElementById('leadOrders').value = l.standingOrders||0;
+    document.getElementById('leadCash').value = l.cash||0;
+    document.getElementById('leadOrderStatus').value = l.orderStatus||'';
+    document.getElementById('leadMonthlyAmount').value = l.monthlyAmount||0;
+    document.getElementById('leadRabbanit').value = l.rabbanit||'';
+    document.getElementById('leadEventDate').value = l.eventDate||'';
+    document.getElementById('leadNotes').value = l.notes||'';
+    document.getElementById('leadModalTitle').textContent = 'עריכת ליד';
+    historyBox.innerHTML = (l.history||[]).map(h => `<div>${h.date} – ${h.user}: ${h.change}</div>`).join('') || 'אין היסטוריה';
+  } else {
+    document.querySelector('#leadModal form').reset();
+    document.getElementById('leadId').value = '';
+    document.getElementById('leadModalTitle').textContent = 'ליד חדש';
+    historyBox.innerHTML = '';
+  }
+}
+function closeLeadModal() { document.getElementById('leadModal').classList.remove('active'); }
+
+function saveLead(e) {
+  e.preventDefault();
+  const id = document.getElementById('leadId').value;
+  const old = id ? leads.find(l => l.id === id) : null;
+  const lead = {
+    id: id || Date.now().toString(),
+    name: document.getElementById('leadName').value,
+    phone: document.getElementById('leadPhone').value,
+    email: document.getElementById('leadEmail').value,
+    source: document.getElementById('leadSource').value,
+    cost: +document.getElementById('leadCost').value || 0,
+    status: document.getElementById('leadStatus').value,
+    standingOrders: +document.getElementById('leadOrders').value || 0,
+    cash: +document.getElementById('leadCash').value || 0,
+    orderStatus: document.getElementById('leadOrderStatus').value,
+    monthlyAmount: +document.getElementById('leadMonthlyAmount').value || 0,
+    orderStart: document.getElementById('leadOrderStart').value,
+    oneTime: +document.getElementById('leadOneTime').value || 0,
+    eventCost: +document.getElementById('leadEventCost').value || 0,
+    rabbanit: document.getElementById('leadRabbanit').value,
+    eventDate: document.getElementById('leadEventDate').value,
+    notes: document.getElementById('leadNotes').value,
+    createdAt: old ? old.createdAt : new Date().toISOString(),
+    history: old ? [...(old.history||[])] : []
+  };
+  if (old && old.status !== lead.status) {
+    lead.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name||'מערכת', change: `סטטוס: ${old.status} → ${lead.status}` });
+  }
+  if (id) {
+    const i = leads.findIndex(l => l.id === id);
+    if (i >= 0) leads[i] = lead;
+  } else leads.unshift(lead);
+  saveLeads();
+  renderLeads();
+  closeLeadModal();
+}
+
+function editLead(id) { openLeadModal(id); }
+
+function copyLead(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  navigator.clipboard.writeText(l.name + '\n' + (l.phone||'')).then(() => alert('הועתק!'));
+}
+
+function quickNote(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  const note = prompt('הערה מהירה:', l.notes || '');
+  if (note !== null) {
+    l.notes = note;
+    if (!l.history) l.history = [];
+    l.history.push({ date: new Date().toLocaleString('he-IL'), user: currentUser?.name || 'מערכת', change: 'הערה עודכנה' });
+    saveLeads();
+    renderLeads();
+  }
+}
+
+function loadTemplate() {
+  const key = document.getElementById('templateSelect')?.value || 'invite';
+  const ta = document.getElementById('waTemplate');
+  if (ta) ta.value = TEMPLATES[key] || '';
+}
+
+function sendWA(id) {
+  const l = leads.find(x => x.id === id);
+  if (!l) return;
+  const tpl = document.getElementById('waTemplate')?.value || TEMPLATES.invite;
+  const msg = tpl.replace(/{name}/g, l.name).replace(/{rabbanit}/g, l.rabbanit||'').replace(/{date}/g, l.eventDate||'');
+  const phone = (l.phone||'').replace(/\D/g,'').replace(/^0/,'972');
+  window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function sendWAToOpen() {
+  const rabbanitFilter = document.getElementById('waRabbanitFilter')?.value || '';
+  let targets = leads.filter(l => l.status === 'open');
+  if (rabbanitFilter) targets = targets.filter(l => l.rabbanit === rabbanitFilter);
+  if (!targets.length) return alert('אין לידים מתאימים');
+  if (confirm('לפתוח וואטסאפ ל-' + targets.length + ' לידים?')) {
+    targets.forEach((l,i) => setTimeout(() => sendWA(l.id), i*700));
+  }
+}
+
+function exportCSV() {
+  const rows = [['שם','טלפון','מקור','עלות','סטטוס','הוראות קבע','סטטוס קבע','סכום חודשי','רבנית','תאריך חוג']];
+  leads.forEach(l => rows.push([l.name, l.phone, l.source, l.cost, l.status, l.standingOrders, l.orderStatus, l.monthlyAmount, l.rabbanit, l.eventDate||'']));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+rows.map(r=>r.join(',')).join('\n')], {type:'text/csv'}));
+  a.download = 'zohar-leads.csv';
+  a.click();
+}
+
+function openSheetsModal() { document.getElementById('sheetsModal').classList.add('active'); }
+
+async function syncSheets() {
+  const url = document.getElementById('sheetsUrl').value.trim();
+  if (!url) return alert('הכנס קישור');
+  const status = document.getElementById('syncStatus');
+  status.textContent = 'מסנכרן...';
+  try {
+    let csvUrl = url;
+    const m = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    if (m) csvUrl = 'https://docs.google.com/spreadsheets/d/' + m[1] + '/export?format=csv';
+    const res = await fetch(csvUrl);
+    const text = await res.text();
+    const lines = text.split('\n');
+    let added = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      if (!cols[0]) continue;
+      const phone = (cols[1]||'').trim();
+      if (phone && leads.some(l => l.phone === phone)) continue;
+      const campaign = (cols[3] || '').toLowerCase();
+      let rabbanit = '';
+      if (campaign.includes('שרה')) rabbanit = 'שרה';
+      else if (campaign.includes('רבקה')) rabbanit = 'רבקה';
+      else if (campaign.includes('לאה')) rabbanit = 'לאה';
+      leads.unshift({ id: 's'+Date.now()+i, name: cols[0].trim(), phone, email: cols[2]||'', source: cols[3]||'Facebook', cost: 0, status: 'open', standingOrders: 0, orderStatus: '', monthlyAmount: 0, rabbanit, eventDate: '', notes: 'יובא', createdAt: new Date().toISOString(), history: [] });
+      added++;
+    }
+    saveLeads(); renderLeads();
+    status.innerHTML = '<span style="color:green;">נוספו '+added+' לידים</span>';
+    setTimeout(() => document.getElementById('sheetsModal').classList.remove('active'), 1200);
+  } catch(e) { status.innerHTML = '<span style="color:red;">'+e.message+'</span>'; }
+}
+
+function renderUsers() {
+  document.getElementById('usersList').innerHTML = Object.entries(users).map(([key, u]) => `
+    <tr>
+      <td>${key}</td>
+      <td>${u.name}</td>
+      <td>${u.rabbanit||'-'}</td>
+      <td>${u.role === 'admin' ? 'מנהל' : (u.role === 'operator' ? 'פעיל' : 'רבנית')}</td>
+      <td>
+        ${key !== 'מנהל' ? `
+          <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;" onclick="editUser('${key}')">עריכה</button>
+          <button class="btn" style="padding:0.3rem 0.5rem;font-size:0.8rem;background:#dc2626;" onclick="deleteUser('${key}')">מחק</button>
+        ` : 'מנהל ראשי'}
+      </td>
+    </tr>
+  `).join('');
+  // Fill WA rabbanit filter
+  const waSelect = document.getElementById('waRabbanitFilter');
+  if (waSelect) {
+    const names = [...new Set(Object.values(users).map(u => u.rabbanit).filter(Boolean))];
+    waSelect.innerHTML = '<option value="">כל הרבניות / כל החוגים</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
+  }
+}
+
+function editUser(key) {
+  const u = users[key];
+  if (!u) return;
+  document.getElementById('userModal').classList.add('active');
+  document.querySelector('#userModal h3').textContent = 'עריכת משתמש';
+  document.getElementById('newUsername').value = key;
+  document.getElementById('newUsername').disabled = true;
+  document.getElementById('newPassword').value = u.pass;
+  document.getElementById('newDisplayName').value = u.name;
+  document.getElementById('newRabbanit').value = u.rabbanit || '';
+  document.getElementById('userModal').dataset.editKey = key;
+}
+
+function openAddUser() {
+  document.getElementById('userModal').classList.add('active');
+  document.querySelector('#userModal h3').textContent = 'הוספת משתמש';
+  document.getElementById('newUsername').disabled = false;
+  document.querySelector('#userModal form').reset();
+  delete document.getElementById('userModal').dataset.editKey;
+}
+
+function closeUserModal() { 
+  document.getElementById('userModal').classList.remove('active'); 
+  document.getElementById('newUsername').disabled = false;
+}
+
+function saveNewUser(e) {
+  e.preventDefault();
+  const editKey = document.getElementById('userModal').dataset.editKey;
+  const username = document.getElementById('newUsername').value.trim();
+  const password = document.getElementById('newPassword').value;
+  const displayName = document.getElementById('newDisplayName').value.trim();
+  const rabbanit = document.getElementById('newRabbanit').value.trim();
+  if (!username || !password || !displayName) return alert('מלא את השדות החובה');
+  const role = editKey ? users[editKey].role : (rabbanit ? 'rabbanit' : 'operator');
+  if (editKey && editKey !== username) delete users[editKey];
+  users[username] = { pass: password, name: displayName, role: role, rabbanit: rabbanit };
+  localStorage.setItem('zohar_users', JSON.stringify(users));
+  closeUserModal();
+  renderUsers();
+  document.querySelector('#userModal form').reset();
+}
+function deleteUser(key) {
+  if (confirm('למחוק?')) { delete users[key]; localStorage.setItem('zohar_users', JSON.stringify(users)); renderUsers(); }
+}
+loadTemplate();
+</script>
+</body>
+</html>
