@@ -1,0 +1,10 @@
+{
+  "name": "לידים",
+  "short_name": "לידים",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1e3a8a",
+  "theme_color": "#1e3a8a"
+}
